@@ -34,11 +34,11 @@
           gain.connect(audioContext.destination);
           osc.frequency.value = freq;
           osc.type = 'sine';
-          gain.gain.setValueAtTime(0, audioContext.currentTime + i * 0.1);
-          gain.gain.linearRampToValueAtTime(volume * 0.3, audioContext.currentTime + i * 0.1 + 0.05);
-          gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + i * 0.1 + 0.5);
-          osc.start(audioContext.currentTime + i * 0.1);
-          osc.stop(audioContext.currentTime + i * 0.1 + 0.5);
+          gain.gain.setValueAtTime(0, audioContext.currentTime);
+          gain.gain.linearRampToValueAtTime(volume * 0.3, audioContext.currentTime + 0.05);
+          gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+          osc.start(audioContext.currentTime);
+          osc.stop(audioContext.currentTime + 0.5);
         });
       } else if (type === 'coin') {
         [1000, 1500].forEach((freq, i) => {
@@ -48,10 +48,10 @@
           gain.connect(audioContext.destination);
           osc.frequency.value = freq;
           osc.type = 'square';
-          gain.gain.setValueAtTime(volume * 0.2, audioContext.currentTime + i * 0.05);
-          gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + i * 0.05 + 0.1);
-          osc.start(audioContext.currentTime + i * 0.05);
-          osc.stop(audioContext.currentTime + i * 0.05 + 0.1);
+          gain.gain.setValueAtTime(volume * 0.2, audioContext.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+          osc.start(audioContext.currentTime);
+          osc.stop(audioContext.currentTime + 0.1);
         });
       } else if (type === 'fanfare') {
         [523, 659, 784, 1047].forEach((freq, i) => {
@@ -61,10 +61,10 @@
           gain.connect(audioContext.destination);
           osc.frequency.value = freq;
           osc.type = 'triangle';
-          gain.gain.setValueAtTime(volume * 0.25, audioContext.currentTime + i * 0.15);
-          gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + i * 0.15 + 0.3);
-          osc.start(audioContext.currentTime + i * 0.15);
-          osc.stop(audioContext.currentTime + i * 0.15 + 0.3);
+          gain.gain.setValueAtTime(volume * 0.25, audioContext.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+          osc.start(audioContext.currentTime);
+          osc.stop(audioContext.currentTime + 0.3);
         });
       } else {
         // default
@@ -75,11 +75,11 @@
           gain.connect(audioContext.destination);
           osc.frequency.value = freq;
           osc.type = 'sine';
-          gain.gain.setValueAtTime(0, audioContext.currentTime + i * 0.15);
-          gain.gain.linearRampToValueAtTime(volume * 0.3, audioContext.currentTime + i * 0.15 + 0.05);
-          gain.gain.linearRampToValueAtTime(0, audioContext.currentTime + i * 0.15 + 0.3);
-          osc.start(audioContext.currentTime + i * 0.15);
-          osc.stop(audioContext.currentTime + i * 0.15 + 0.3);
+          gain.gain.setValueAtTime(0, audioContext.currentTime);
+          gain.gain.linearRampToValueAtTime(volume * 0.3, audioContext.currentTime + 0.05);
+          gain.gain.linearRampToValueAtTime(0, audioContext.currentTime + 0.3);
+          osc.start(audioContext.currentTime);
+          osc.stop(audioContext.currentTime + 0.3);
         });
       }
     } catch (e) {
