@@ -21,6 +21,24 @@
 }
 
 /* Themes */
+body[data-theme="default"] {
+  --void: #0a0a0a;
+  --surface: rgba(13, 13, 20, 0.88);
+  --border: rgba(76, 175, 80, 0.3);
+  --glow: #4CAF50;
+  --glow-muted: #8BC34A;
+  --kick: #53fc18;
+}
+
+body[data-theme="cyberpunk"] {
+  --void: #000000;
+  --surface: rgba(0, 0, 0, 0.95);
+  --border: #FF0040;
+  --glow: #FF0040;
+  --glow-muted: #00FFFF;
+  --kick: #B026FF;
+}
+
 body[data-theme="minimal"] {
   --void: #000000;
   --surface: rgba(20, 20, 20, 0.95);

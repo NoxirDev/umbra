@@ -11,10 +11,71 @@
   box-sizing: border-box;
 }
 
+/* Theme Variables */
+:root {
+  --primary-color: #4CAF50;
+  --secondary-color: #8BC34A;
+  --background: rgba(13, 13, 20, 0.85);
+  --text-primary: #e8e8ed;
+  --text-secondary: #a8a8b3;
+  --border-color: #a8a8b3;
+  --glow-color: rgba(76, 175, 80, 0.5);
+}
+
+body[data-theme="cyberpunk"] {
+  --primary-color: #FF0040;
+  --secondary-color: #00FFFF;
+  --background: rgba(0, 0, 0, 0.95);
+  --text-primary: #ffffff;
+  --text-secondary: #00FFFF;
+  --border-color: #FF0040;
+  --glow-color: rgba(255, 0, 64, 0.5);
+}
+
+body[data-theme="minimal"] {
+  --primary-color: #ffffff;
+  --secondary-color: #e0e0e0;
+  --background: rgba(20, 20, 20, 0.85);
+  --text-primary: #ffffff;
+  --text-secondary: #cccccc;
+  --border-color: #333333;
+  --glow-color: rgba(255, 255, 255, 0.3);
+}
+
+body[data-theme="neon"] {
+  --primary-color: #FF00FF;
+  --secondary-color: #00FFFF;
+  --background: rgba(20, 0, 40, 0.9);
+  --text-primary: #ffffff;
+  --text-secondary: #ff00ff;
+  --border-color: #ff00ff;
+  --glow-color: rgba(255, 0, 255, 0.6);
+}
+
+body[data-theme="dark"] {
+  --primary-color: #888888;
+  --secondary-color: #666666;
+  --background: rgba(10, 10, 10, 0.95);
+  --text-primary: #888888;
+  --text-secondary: #666666;
+  --border-color: #1a1a1a;
+  --glow-color: rgba(136, 136, 136, 0.3);
+}
+
+body[data-theme="matrix"] {
+  --primary-color: #00FF00;
+  --secondary-color: #00CC00;
+  --background: rgba(0, 10, 0, 0.9);
+  --text-primary: #00FF00;
+  --text-secondary: #00aa00;
+  --border-color: #00ff00;
+  --glow-color: rgba(0, 255, 0, 0.5);
+}
+
 body {
   font-family: 'Inter', 'Segoe UI', sans-serif;
   background: transparent;
-  color: #e8e8ed;
+  color: var(--text-primary);
   overflow: hidden;
   width: 100vw;
   height: 100vh;
@@ -38,8 +99,8 @@ body {
 }
 
 .chat-message {
-  background: rgba(13, 13, 20, 0.85);
-  border-left: 2px solid #a8a8b3;
+  background: var(--background);
+  border-left: 2px solid var(--border-color);
   padding: 8px 12px;
   margin-bottom: 8px;
   border-radius: 4px;
@@ -53,7 +114,7 @@ body {
 }
 
 .chat-text {
-  color: #e8e8ed;
+  color: var(--text-primary);
 }
 
 /* Donation Alert */
@@ -62,15 +123,15 @@ body {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%) scale(0);
-  background: rgba(13, 13, 20, 0.95);
-  border: 2px solid #4CAF50;
+  background: var(--background);
+  border: 2px solid var(--primary-color);
   border-radius: 12px;
   padding: 40px 60px;
   text-align: center;
   z-index: 1000;
   opacity: 0;
   backdrop-filter: blur(20px);
-  box-shadow: 0 0 40px rgba(76, 175, 80, 0.5);
+  box-shadow: 0 0 40px var(--glow-color);
 }
 
 #donation-alert.show {
@@ -80,27 +141,27 @@ body {
 .donation-name {
   font-size: 32px;
   font-weight: 700;
-  color: #4CAF50;
+  color: var(--primary-color);
   margin-bottom: 10px;
 }
 
 .donation-amount {
   font-size: 48px;
   font-weight: 900;
-  color: #fff;
+  color: var(--text-primary);
   margin-bottom: 15px;
-  text-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+  text-shadow: 0 0 20px var(--glow-color);
 }
 
 .donation-message {
   font-size: 20px;
-  color: #e8e8ed;
+  color: var(--text-primary);
   max-width: 600px;
 }
 
 /* Goal Bar */
 #goal-container {
-  background: rgba(13, 13, 20, 0.85);
+  background: var(--background);
   border-radius: 8px;
   padding: 15px;
   backdrop-filter: blur(10px);
@@ -109,7 +170,7 @@ body {
 #goal-title {
   font-size: 14px;
   font-weight: 600;
-  color: #a8a8b3;
+  color: var(--text-secondary);
   margin-bottom: 8px;
   text-transform: uppercase;
   letter-spacing: 1px;
@@ -124,7 +185,7 @@ body {
 }
 
 #goal-bar-fill {
-  background: linear-gradient(90deg, #4CAF50, #8BC34A);
+  background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
   height: 100%;
   width: 0%;
   transition: width 0.5s ease;
@@ -209,10 +270,14 @@ body {
   </div>
 
   <script>
-    // Get API key from URL (optional for localhost)
+    // Get API key and theme from URL
     const urlParams = new URLSearchParams(window.location.search);
     const API_KEY = urlParams.get('key') || '';
+    const THEME = urlParams.get('theme') || 'default';
     const WS_URL = API_KEY ? `ws://127.0.0.1:4587?key=${API_KEY}` : `ws://127.0.0.1:4587`;
+
+    // Apply theme
+    document.body.setAttribute('data-theme', THEME);
 
     let ws = null;
     const MAX_MESSAGES = 50;

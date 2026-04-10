@@ -383,7 +383,8 @@ input::placeholder{color:var(--text-m);}
         <div class="field">
           <label class="field-label">ТЕМА ОВЕРЛЕЯ</label>
           <select id="theme-select" style="width:100%;background:var(--void);border:1px solid var(--border);border-radius:3px;padding:10px 12px;font-family:'Inter',sans-serif;font-size:13px;color:var(--text);">
-            <option value="default">Default (Киберпанк)</option>
+            <option value="default">Default (Зеленый)</option>
+            <option value="cyberpunk">Cyberpunk (Красный/Cyan)</option>
             <option value="minimal">Minimal (Минимализм)</option>
             <option value="neon">Neon (Яркий неон)</option>
             <option value="dark">Dark (Темный)</option>
@@ -791,10 +792,11 @@ API.onReady((s) => {
 
   // OBS URLs
   const port = s.apiPort || 4587;
-  document.getElementById('obs-overlay-url').value = `http://127.0.0.1:${port}/obs/overlay.html`;
-  document.getElementById('obs-chat-url').value = `http://127.0.0.1:${port}/obs/chat.html`;
-  document.getElementById('obs-donations-url').value = `http://127.0.0.1:${port}/obs/donations.html`;
-  document.getElementById('obs-goal-url').value = `http://127.0.0.1:${port}/obs/goal.html`;
+  const theme = s.theme || 'default';
+  document.getElementById('obs-overlay-url').value = `http://127.0.0.1:${port}/obs/overlay.html?theme=${theme}`;
+  document.getElementById('obs-chat-url').value = `http://127.0.0.1:${port}/obs/chat.html?theme=${theme}`;
+  document.getElementById('obs-donations-url').value = `http://127.0.0.1:${port}/obs/donations.html?theme=${theme}`;
+  document.getElementById('obs-goal-url').value = `http://127.0.0.1:${port}/obs/goal.html?theme=${theme}`;
   // New settings
   if (s.theme)            document.getElementById('theme-select').value = s.theme || 'default';
   if (s.fontSize)         { document.getElementById('font-size').value = s.fontSize || 13; document.getElementById('font-size-val').textContent = (s.fontSize || 13) + 'px'; }
@@ -867,6 +869,16 @@ function doSave() {
   showNotif('СОХРАНЕНО', 'success');
 }
 document.getElementById('save-btn').addEventListener('click', doSave);
+
+// ── UPDATE OBS URLS ON THEME CHANGE ──
+document.getElementById('theme-select').addEventListener('change', (e) => {
+  const port = document.getElementById('api-port').value || 4587;
+  const theme = e.target.value;
+  document.getElementById('obs-overlay-url').value = `http://127.0.0.1:${port}/obs/overlay.html?theme=${theme}`;
+  document.getElementById('obs-chat-url').value = `http://127.0.0.1:${port}/obs/chat.html?theme=${theme}`;
+  document.getElementById('obs-donations-url').value = `http://127.0.0.1:${port}/obs/donations.html?theme=${theme}`;
+  document.getElementById('obs-goal-url').value = `http://127.0.0.1:${port}/obs/goal.html?theme=${theme}`;
+});
 
 // ── TEST ──
 function doTestDonation() {

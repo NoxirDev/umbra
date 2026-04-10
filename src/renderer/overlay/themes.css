@@ -1,0 +1,71 @@
+/* UMBRA Overlay Themes */
+
+/* Default Theme - Green/Clean */
+:root[data-theme="default"] {
+  --primary-color: #4CAF50;
+  --secondary-color: #8BC34A;
+  --accent-color: #CDDC39;
+  --background: rgba(13, 13, 20, 0.9);
+  --text-primary: #ffffff;
+  --text-secondary: rgba(255, 255, 255, 0.8);
+  --border-color: rgba(76, 175, 80, 0.3);
+  --glow-color: rgba(76, 175, 80, 0.5);
+  --particle-1: #4CAF50;
+  --particle-2: #8BC34A;
+}
+
+/* Cyberpunk Theme - Red/Cyan/Dark */
+:root[data-theme="cyberpunk"] {
+  --primary-color: #FF0040;
+  --secondary-color: #00FFFF;
+  --accent-color: #B026FF;
+  --background: rgba(0, 0, 0, 0.95);
+  --text-primary: #ffffff;
+  --text-secondary: rgba(255, 255, 255, 0.8);
+  --border-color: #FF0040;
+  --glow-color: rgba(255, 0, 64, 0.5);
+  --particle-1: #FF0040;
+  --particle-2: #00FFFF;
+}
+
+/* Minimal Theme - Monochrome */
+:root[data-theme="minimal"] {
+  --primary-color: #ffffff;
+  --secondary-color: #e0e0e0;
+  --accent-color: #b0b0b0;
+  --background: rgba(20, 20, 20, 0.85);
+  --text-primary: #ffffff;
+  --text-secondary: rgba(255, 255, 255, 0.7);
+  --border-color: rgba(255, 255, 255, 0.2);
+  --glow-color: rgba(255, 255, 255, 0.3);
+  --particle-1: #ffffff;
+  --particle-2: #e0e0e0;
+}
+
+/* Neon Theme - Bright Colors */
+:root[data-theme="neon"] {
+  --primary-color: #FF00FF;
+  --secondary-color: #00FFFF;
+  --accent-color: #FFFF00;
+  --background: rgba(10, 0, 20, 0.9);
+  --text-primary: #ffffff;
+  --text-secondary: rgba(255, 255, 255, 0.9);
+  --border-color: #FF00FF;
+  --glow-color: rgba(255, 0, 255, 0.6);
+  --particle-1: #FF00FF;
+  --particle-2: #00FFFF;
+}
+
+/* Matrix Theme - Green Matrix */
+:root[data-theme="matrix"] {
+  --primary-color: #00FF00;
+  --secondary-color: #00CC00;
+  --accent-color: #00FF66;
+  --background: rgba(0, 10, 0, 0.95);
+  --text-primary: #00FF00;
+  --text-secondary: rgba(0, 255, 0, 0.8);
+  --border-color: #00FF00;
+  --glow-color: rgba(0, 255, 0, 0.5);
+  --particle-1: #00FF00;
+  --particle-2: #00CC00;
+}
