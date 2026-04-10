@@ -1,0 +1,8 @@
+{
+  "name": "umbra",
+  "version": "2.1.0",
+  "description": "UMBRA — Stream Overlay by Noxir",
+  "main": "src/main.js",
+  "author": "Noxir",
+  "license": "MIT"
+}
