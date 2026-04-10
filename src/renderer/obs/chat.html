@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UMBRA - OBS Chat</title>
+<style>
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', 'Segoe UI', sans-serif;
+  background: transparent;
+  color: #e8e8ed;
+  overflow: hidden;
+  width: 100vw;
+  height: 100vh;
+  padding: 20px;
+}
+
+#chat {
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.chat-message {
+  background: rgba(13, 13, 20, 0.85);
+  border-left: 2px solid #a8a8b3;
+  padding: 10px 14px;
+  border-radius: 4px;
+  animation: slideIn 0.3s ease;
+  backdrop-filter: blur(10px);
+}
+
+.chat-author {
+  font-weight: 600;
+  margin-right: 8px;
+  font-size: 14px;
+}
+
+.chat-text {
+  color: #e8e8ed;
+  font-size: 14px;
+  word-wrap: break-word;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+</style>
+</head>
+<body>
+  <div id="chat"></div>
+
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const API_KEY = urlParams.get('key');
+    const WS_URL = `ws://127.0.0.1:4587?key=${API_KEY}`;
+    const MAX_MESSAGES = parseInt(urlParams.get('limit')) || 50;
+
+    let ws = null;
+
+    function connect() {
+      ws = new WebSocket(WS_URL);
+
+      ws.onopen = () => console.log('[UMBRA OBS Chat] Connected');
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === 'message') {
+            addMessage(data.data);
+          } else if (data.type === 'chat_cleared') {
+            clearChat();
+          }
+        } catch (e) {
+          console.error('[UMBRA OBS Chat] Parse error:', e);
+        }
+      };
+
+      ws.onerror = (error) => console.error('[UMBRA OBS Chat] Error:', error);
+
+      ws.onclose = () => {
+        console.log('[UMBRA OBS Chat] Disconnected, reconnecting...');
+        setTimeout(connect, 3000);
+      };
+    }
+
+    function addMessage(data) {
+      const chat = document.getElementById('chat');
+      const msg = document.createElement('div');
+      msg.className = 'chat-message';
+
+      const author = document.createElement('span');
+      author.className = 'chat-author';
+      author.style.color = data.color || '#a8a8b3';
+      author.textContent = data.author;
+
+      const text = document.createElement('span');
+      text.className = 'chat-text';
+      text.textContent = data.text;
+
+      msg.appendChild(author);
+      msg.appendChild(text);
+      chat.appendChild(msg);
+
+      while (chat.children.length > MAX_MESSAGES) {
+        chat.removeChild(chat.firstChild);
+      }
+
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    function clearChat() {
+      document.getElementById('chat').innerHTML = '';
+    }
+
+    if (API_KEY) {
+      connect();
+    } else {
+      document.body.innerHTML = '<div style="color: red; padding: 20px;">ERROR: API key required</div>';
+    }
+  </script>
+</body>
+</html>

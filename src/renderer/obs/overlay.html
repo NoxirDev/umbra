@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UMBRA - OBS Overlay</title>
+<style>
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', 'Segoe UI', sans-serif;
+  background: transparent;
+  color: #e8e8ed;
+  overflow: hidden;
+  width: 100vw;
+  height: 100vh;
+}
+
+/* Container */
+.overlay-container {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+}
+
+/* Chat */
+#chat {
+  flex: 1;
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+
+.chat-message {
+  background: rgba(13, 13, 20, 0.85);
+  border-left: 2px solid #a8a8b3;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  border-radius: 4px;
+  animation: slideIn 0.3s ease;
+  backdrop-filter: blur(10px);
+}
+
+.chat-author {
+  font-weight: 600;
+  margin-right: 8px;
+}
+
+.chat-text {
+  color: #e8e8ed;
+}
+
+/* Donation Alert */
+#donation-alert {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0);
+  background: rgba(13, 13, 20, 0.95);
+  border: 2px solid #4CAF50;
+  border-radius: 12px;
+  padding: 40px 60px;
+  text-align: center;
+  z-index: 1000;
+  opacity: 0;
+  backdrop-filter: blur(20px);
+  box-shadow: 0 0 40px rgba(76, 175, 80, 0.5);
+}
+
+#donation-alert.show {
+  animation: donationPop 0.5s ease forwards;
+}
+
+.donation-name {
+  font-size: 32px;
+  font-weight: 700;
+  color: #4CAF50;
+  margin-bottom: 10px;
+}
+
+.donation-amount {
+  font-size: 48px;
+  font-weight: 900;
+  color: #fff;
+  margin-bottom: 15px;
+  text-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+}
+
+.donation-message {
+  font-size: 20px;
+  color: #e8e8ed;
+  max-width: 600px;
+}
+
+/* Goal Bar */
+#goal-container {
+  background: rgba(13, 13, 20, 0.85);
+  border-radius: 8px;
+  padding: 15px;
+  backdrop-filter: blur(10px);
+}
+
+#goal-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #a8a8b3;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+#goal-bar-bg {
+  background: rgba(255, 255, 255, 0.1);
+  height: 24px;
+  border-radius: 12px;
+  overflow: hidden;
+  position: relative;
+}
+
+#goal-bar-fill {
+  background: linear-gradient(90deg, #4CAF50, #8BC34A);
+  height: 100%;
+  width: 0%;
+  transition: width 0.5s ease;
+  border-radius: 12px;
+}
+
+#goal-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+/* Animations */
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes donationPop {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0);
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.1);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+/* Particles */
+.particle {
+  position: fixed;
+  font-size: 32px;
+  pointer-events: none;
+  animation: particleFall 3s ease-out forwards;
+  z-index: 999;
+}
+
+@keyframes particleFall {
+  0% {
+    opacity: 1;
+    transform: translateY(0) rotate(0deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(100vh) rotate(360deg);
+  }
+}
+</style>
+</head>
+<body>
+  <div class="overlay-container">
+    <div id="chat"></div>
+
+    <div id="goal-container">
+      <div id="goal-title">ЦЕЛЬ СБОРА</div>
+      <div id="goal-bar-bg">
+        <div id="goal-bar-fill"></div>
+        <div id="goal-text">0 / 0</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="donation-alert">
+    <div class="donation-name"></div>
+    <div class="donation-amount"></div>
+    <div class="donation-message"></div>
+  </div>
+
+  <script>
+    // Get API key from URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const API_KEY = urlParams.get('key');
+    const WS_URL = `ws://127.0.0.1:4587?key=${API_KEY}`;
+
+    let ws = null;
+    const MAX_MESSAGES = 50;
+
+    // Connect to WebSocket
+    function connect() {
+      ws = new WebSocket(WS_URL);
+
+      ws.onopen = () => {
+        console.log('[UMBRA OBS] Connected');
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          handleEvent(data);
+        } catch (e) {
+          console.error('[UMBRA OBS] Parse error:', e);
+        }
+      };
+
+      ws.onerror = (error) => {
+        console.error('[UMBRA OBS] WebSocket error:', error);
+      };
+
+      ws.onclose = () => {
+        console.log('[UMBRA OBS] Disconnected, reconnecting...');
+        setTimeout(connect, 3000);
+      };
+    }
+
+    // Handle events
+    function handleEvent(data) {
+      switch (data.type) {
+        case 'donation':
+          showDonation(data.data);
+          break;
+        case 'message':
+          addMessage(data.data);
+          break;
+        case 'goal_update':
+          updateGoal(data.data);
+          break;
+        case 'chat_cleared':
+          clearChat();
+          break;
+      }
+    }
+
+    // Show donation
+    function showDonation(data) {
+      const alert = document.getElementById('donation-alert');
+      alert.querySelector('.donation-name').textContent = data.name;
+      alert.querySelector('.donation-amount').textContent = `${data.amount} ${data.currency || 'RUB'}`;
+      alert.querySelector('.donation-message').textContent = data.message || '';
+
+      alert.classList.add('show');
+      spawnParticles();
+
+      setTimeout(() => {
+        alert.classList.remove('show');
+      }, 8000);
+    }
+
+    // Add chat message
+    function addMessage(data) {
+      const chat = document.getElementById('chat');
+      const msg = document.createElement('div');
+      msg.className = 'chat-message';
+
+      const author = document.createElement('span');
+      author.className = 'chat-author';
+      author.style.color = data.color || '#a8a8b3';
+      author.textContent = data.author;
+
+      const text = document.createElement('span');
+      text.className = 'chat-text';
+      text.textContent = data.text;
+
+      msg.appendChild(author);
+      msg.appendChild(text);
+      chat.appendChild(msg);
+
+      // Limit messages
+      while (chat.children.length > MAX_MESSAGES) {
+        chat.removeChild(chat.firstChild);
+      }
+
+      // Auto scroll
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    // Update goal
+    function updateGoal(data) {
+      const current = data.current || 0;
+      const target = data.target || 0;
+      const percentage = target > 0 ? Math.min(100, (current / target) * 100) : 0;
+
+      document.getElementById('goal-title').textContent = data.title || 'ЦЕЛЬ СБОРА';
+      document.getElementById('goal-bar-fill').style.width = percentage + '%';
+      document.getElementById('goal-text').textContent = `${current} / ${target}`;
+    }
+
+    // Clear chat
+    function clearChat() {
+      document.getElementById('chat').innerHTML = '';
+    }
+
+    // Spawn particles
+    function spawnParticles() {
+      const emojis = ['🎉', '✨', '⭐', '💫', '🌟', '💰'];
+      for (let i = 0; i < 10; i++) {
+        const particle = document.createElement('div');
+        particle.className = 'particle';
+        particle.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+        particle.style.left = Math.random() * 100 + '%';
+        particle.style.animationDelay = Math.random() * 0.5 + 's';
+        document.body.appendChild(particle);
+
+        setTimeout(() => particle.remove(), 3000);
+      }
+    }
+
+    // Load initial data
+    async function loadInitialData() {
+      try {
+        const response = await fetch('http://127.0.0.1:4587/v2/stats', {
+          headers: { 'X-API-Key': API_KEY }
+        });
+        const result = await response.json();
+        if (result.ok) {
+          updateGoal(result.data.goal);
+        }
+      } catch (e) {
+        console.error('[UMBRA OBS] Failed to load initial data:', e);
+      }
+    }
+
+    // Start
+    if (API_KEY) {
+      connect();
+      loadInitialData();
+    } else {
+      document.body.innerHTML = '<div style="color: red; padding: 20px;">ERROR: API key required. Add ?key=YOUR_API_KEY to URL</div>';
+    }
+  </script>
+</body>
+</html>

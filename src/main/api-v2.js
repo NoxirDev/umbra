@@ -118,6 +118,11 @@ class ApiServerV2 {
   }
 
   routeRequest(method, url, req, res) {
+    // OBS Browser Source pages (serve HTML files)
+    if (method === 'GET' && url.startsWith('/obs/')) {
+      return this.serveOBSPage(url, req, res);
+    }
+
     // API Info
     if (method === 'GET' && url === '/v2') {
       return this.handleApiInfo(req, res);
@@ -580,6 +585,40 @@ class ApiServerV2 {
     }
 
     this.sendError(res, 405, 'Method not allowed');
+  }
+
+  serveOBSPage(url, req, res) {
+    const fs = require('fs');
+    const path = require('path');
+
+    // Map URL to file
+    let filePath;
+    if (url.startsWith('/obs/overlay')) {
+      filePath = path.join(__dirname, '..', 'renderer', 'obs', 'overlay.html');
+    } else if (url.startsWith('/obs/chat')) {
+      filePath = path.join(__dirname, '..', 'renderer', 'obs', 'chat.html');
+    } else if (url.startsWith('/obs/donations')) {
+      filePath = path.join(__dirname, '..', 'renderer', 'obs', 'donations.html');
+    } else if (url.startsWith('/obs/goal')) {
+      filePath = path.join(__dirname, '..', 'renderer', 'obs', 'goal.html');
+    } else {
+      res.writeHead(404);
+      res.end('Not found');
+      return;
+    }
+
+    // Read and serve file
+    fs.readFile(filePath, 'utf8', (err, data) => {
+      if (err) {
+        console.error('Failed to read OBS file:', err);
+        res.writeHead(404);
+        res.end('File not found');
+        return;
+      }
+
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      res.end(data);
+    });
   }
 
   // ═══════════════════════════════════════════════════════════

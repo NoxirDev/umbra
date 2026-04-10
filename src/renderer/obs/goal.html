@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UMBRA - OBS Goal</title>
+<style>
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', 'Segoe UI', sans-serif;
+  background: transparent;
+  color: #e8e8ed;
+  overflow: hidden;
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+#goal-container {
+  background: rgba(13, 13, 20, 0.85);
+  border-radius: 8px;
+  padding: 20px;
+  backdrop-filter: blur(10px);
+  min-width: 400px;
+  max-width: 600px;
+  width: 100%;
+}
+
+#goal-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #a8a8b3;
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  text-align: center;
+}
+
+#goal-bar-bg {
+  background: rgba(255, 255, 255, 0.1);
+  height: 32px;
+  border-radius: 16px;
+  overflow: hidden;
+  position: relative;
+}
+
+#goal-bar-fill {
+  background: linear-gradient(90deg, #4CAF50, #8BC34A);
+  height: 100%;
+  width: 0%;
+  transition: width 0.5s ease;
+  border-radius: 16px;
+}
+
+#goal-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+</style>
+</head>
+<body>
+  <div id="goal-container">
+    <div id="goal-title">ЦЕЛЬ СБОРА</div>
+    <div id="goal-bar-bg">
+      <div id="goal-bar-fill"></div>
+      <div id="goal-text">0 / 0</div>
+    </div>
+  </div>
+
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const API_KEY = urlParams.get('key');
+    const WS_URL = `ws://127.0.0.1:4587?key=${API_KEY}`;
+
+    let ws = null;
+
+    function connect() {
+      ws = new WebSocket(WS_URL);
+
+      ws.onopen = () => {
+        console.log('[UMBRA OBS Goal] Connected');
+        loadInitialData();
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === 'goal_update') {
+            updateGoal(data.data);
+          }
+        } catch (e) {
+          console.error('[UMBRA OBS Goal] Parse error:', e);
+        }
+      };
+
+      ws.onerror = (error) => console.error('[UMBRA OBS Goal] Error:', error);
+
+      ws.onclose = () => {
+        console.log('[UMBRA OBS Goal] Disconnected, reconnecting...');
+        setTimeout(connect, 3000);
+      };
+    }
+
+    function updateGoal(data) {
+      const current = data.current || 0;
+      const target = data.target || 0;
+      const percentage = target > 0 ? Math.min(100, (current / target) * 100) : 0;
+
+      document.getElementById('goal-title').textContent = data.title || 'ЦЕЛЬ СБОРА';
+      document.getElementById('goal-bar-fill').style.width = percentage + '%';
+      document.getElementById('goal-text').textContent = `${current} / ${target}`;
+    }
+
+    async function loadInitialData() {
+      try {
+        const response = await fetch('http://127.0.0.1:4587/v2/stats', {
+          headers: { 'X-API-Key': API_KEY }
+        });
+        const result = await response.json();
+        if (result.ok) {
+          updateGoal(result.data.goal);
+        }
+      } catch (e) {
+        console.error('[UMBRA OBS Goal] Failed to load initial data:', e);
+      }
+    }
+
+    if (API_KEY) {
+      connect();
+    } else {
+      document.body.innerHTML = '<div style="color: red; padding: 20px;">ERROR: API key required</div>';
+    }
+  </script>
+</body>
+</html>

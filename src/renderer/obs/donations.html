@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UMBRA - OBS Donations</title>
+<style>
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', 'Segoe UI', sans-serif;
+  background: transparent;
+  color: #e8e8ed;
+  overflow: hidden;
+  width: 100vw;
+  height: 100vh;
+}
+
+#donation-alert {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0);
+  background: rgba(13, 13, 20, 0.95);
+  border: 2px solid #4CAF50;
+  border-radius: 12px;
+  padding: 40px 60px;
+  text-align: center;
+  opacity: 0;
+  backdrop-filter: blur(20px);
+  box-shadow: 0 0 40px rgba(76, 175, 80, 0.5);
+}
+
+#donation-alert.show {
+  animation: donationPop 0.5s ease forwards;
+}
+
+.donation-name {
+  font-size: 32px;
+  font-weight: 700;
+  color: #4CAF50;
+  margin-bottom: 10px;
+}
+
+.donation-amount {
+  font-size: 48px;
+  font-weight: 900;
+  color: #fff;
+  margin-bottom: 15px;
+  text-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+}
+
+.donation-message {
+  font-size: 20px;
+  color: #e8e8ed;
+  max-width: 600px;
+  word-wrap: break-word;
+}
+
+.particle {
+  position: fixed;
+  font-size: 32px;
+  pointer-events: none;
+  animation: particleFall 3s ease-out forwards;
+  z-index: 999;
+}
+
+@keyframes donationPop {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0);
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.1);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+@keyframes particleFall {
+  0% {
+    opacity: 1;
+    transform: translateY(0) rotate(0deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(100vh) rotate(360deg);
+  }
+}
+</style>
+</head>
+<body>
+  <div id="donation-alert">
+    <div class="donation-name"></div>
+    <div class="donation-amount"></div>
+    <div class="donation-message"></div>
+  </div>
+
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const API_KEY = urlParams.get('key');
+    const WS_URL = `ws://127.0.0.1:4587?key=${API_KEY}`;
+    const DURATION = parseInt(urlParams.get('duration')) || 8000;
+
+    let ws = null;
+
+    function connect() {
+      ws = new WebSocket(WS_URL);
+
+      ws.onopen = () => console.log('[UMBRA OBS Donations] Connected');
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === 'donation') {
+            showDonation(data.data);
+          }
+        } catch (e) {
+          console.error('[UMBRA OBS Donations] Parse error:', e);
+        }
+      };
+
+      ws.onerror = (error) => console.error('[UMBRA OBS Donations] Error:', error);
+
+      ws.onclose = () => {
+        console.log('[UMBRA OBS Donations] Disconnected, reconnecting...');
+        setTimeout(connect, 3000);
+      };
+    }
+
+    function showDonation(data) {
+      const alert = document.getElementById('donation-alert');
+      alert.querySelector('.donation-name').textContent = data.name;
+      alert.querySelector('.donation-amount').textContent = `${data.amount} ${data.currency || 'RUB'}`;
+      alert.querySelector('.donation-message').textContent = data.message || '';
+
+      alert.classList.add('show');
+      spawnParticles();
+
+      setTimeout(() => {
+        alert.classList.remove('show');
+      }, DURATION);
+    }
+
+    function spawnParticles() {
+      const emojis = ['🎉', '✨', '⭐', '💫', '🌟', '💰'];
+      for (let i = 0; i < 10; i++) {
+        const particle = document.createElement('div');
+        particle.className = 'particle';
+        particle.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+        particle.style.left = Math.random() * 100 + '%';
+        particle.style.animationDelay = Math.random() * 0.5 + 's';
+        document.body.appendChild(particle);
+
+        setTimeout(() => particle.remove(), 3000);
+      }
+    }
+
+    if (API_KEY) {
+      connect();
+    } else {
+      document.body.innerHTML = '<div style="color: red; padding: 20px;">ERROR: API key required</div>';
+    }
+  </script>
+</body>
+</html>
