@@ -143,7 +143,7 @@ class SettingsManager {
         .replace(/[^a-zA-Z0-9\-_]/g, '')
         .slice(0, 128),
 
-      apiEnabled: s.apiEnabled === true,
+      apiEnabled: s.apiEnabled !== false, // Enabled by default
 
       // Other
       animSpeed: Math.min(10, Math.max(1, safeInt(s.animSpeed, 5))),
