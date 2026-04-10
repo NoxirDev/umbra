@@ -83,8 +83,8 @@ body {
 
   <script>
     const urlParams = new URLSearchParams(window.location.search);
-    const API_KEY = urlParams.get('key');
-    const WS_URL = `ws://127.0.0.1:4587?key=${API_KEY}`;
+    const API_KEY = urlParams.get('key') || '';
+    const WS_URL = API_KEY ? `ws://127.0.0.1:4587?key=${API_KEY}` : `ws://127.0.0.1:4587`;
 
     let ws = null;
 
@@ -127,9 +127,8 @@ body {
 
     async function loadInitialData() {
       try {
-        const response = await fetch('http://127.0.0.1:4587/v2/stats', {
-          headers: { 'X-API-Key': API_KEY }
-        });
+        const headers = API_KEY ? { 'X-API-Key': API_KEY } : {};
+        const response = await fetch('http://127.0.0.1:4587/v2/stats', { headers });
         const result = await response.json();
         if (result.ok) {
           updateGoal(result.data.goal);
@@ -139,11 +138,7 @@ body {
       }
     }
 
-    if (API_KEY) {
-      connect();
-    } else {
-      document.body.innerHTML = '<div style="color: red; padding: 20px;">ERROR: API key required</div>';
-    }
+    connect();
   </script>
 </body>
 </html>

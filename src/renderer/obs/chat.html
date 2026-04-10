@@ -67,8 +67,8 @@ body {
 
   <script>
     const urlParams = new URLSearchParams(window.location.search);
-    const API_KEY = urlParams.get('key');
-    const WS_URL = `ws://127.0.0.1:4587?key=${API_KEY}`;
+    const API_KEY = urlParams.get('key') || '';
+    const WS_URL = API_KEY ? `ws://127.0.0.1:4587?key=${API_KEY}` : `ws://127.0.0.1:4587`;
     const MAX_MESSAGES = parseInt(urlParams.get('limit')) || 50;
 
     let ws = null;
@@ -128,11 +128,7 @@ body {
       document.getElementById('chat').innerHTML = '';
     }
 
-    if (API_KEY) {
-      connect();
-    } else {
-      document.body.innerHTML = '<div style="color: red; padding: 20px;">ERROR: API key required</div>';
-    }
+    connect();
   </script>
 </body>
 </html>

@@ -100,11 +100,16 @@ class ApiServerV2 {
       return;
     }
 
-    // Auth
-    const key = req.headers['x-api-key'] || req.headers['authorization']?.replace('Bearer ', '') || '';
-    if (key !== apiKey) {
-      this.sendError(res, 401, 'Invalid API key');
-      return;
+    // Auth - skip for localhost
+    const clientIp = req.socket.remoteAddress;
+    const isLocalhost = clientIp === '127.0.0.1' || clientIp === '::1' || clientIp === '::ffff:127.0.0.1';
+
+    if (!isLocalhost) {
+      const key = req.headers['x-api-key'] || req.headers['authorization']?.replace('Bearer ', '') || '';
+      if (key !== apiKey) {
+        this.sendError(res, 401, 'Invalid API key');
+        return;
+      }
     }
 
     // Rate limit
@@ -629,7 +634,11 @@ class ApiServerV2 {
     const url = new URL(req.url, 'ws://localhost');
     const key = url.searchParams.get('key') || '';
 
-    if (key !== apiKey) {
+    // Skip auth for localhost
+    const clientIp = req.socket.remoteAddress;
+    const isLocalhost = clientIp === '127.0.0.1' || clientIp === '::1' || clientIp === '::ffff:127.0.0.1';
+
+    if (!isLocalhost && key !== apiKey) {
       ws.close(1008, 'Invalid API key');
       return;
     }
