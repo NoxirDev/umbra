@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://donationalerts.com; font-src https://fonts.gstatic.com; script-src 'self' 'unsafe-inline'; connect-src https://donationalerts.com https://donatepay.ru;">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://donationalerts.com; font-src https://fonts.gstatic.com; script-src 'self' 'unsafe-inline'; connect-src https://donationalerts.com https://www.googleapis.com;">
 <title>UMBRA — Settings</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -189,30 +189,22 @@ input::placeholder{color:var(--text-m);}
       </div>
 
       <div class="panel">
-        <div class="panel-title">DONATEX</div>
-        <div class="field">
-          <label class="field-label">ТОКЕН ИЛИ ССЫЛКА НА ВИДЖЕТ</label>
-          <div class="input-wrap">
-            <input type="password" id="dx-token" placeholder="Токен или https://widget.donatepay.ru/...">
-            <button class="eye-btn" data-target="dx-token">
-              <svg class="eye-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-              <svg class="eye-closed" style="display:none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
-            </button>
-          </div>
-          <span id="dx-hint" class="field-hint"></span>
-        </div>
-        <div class="status-row">
-          <div><div class="status-name">СТАТУС</div><div class="status-info" id="dx-info">Не подключён</div></div>
-          <div class="sdot" id="d-dx"></div>
-        </div>
-      </div>
-
-      <div class="panel">
-        <div class="panel-title">YOUTUBE</div>
+        <div class="panel-title">YOUTUBE LIVE CHAT</div>
         <div class="field">
           <label class="field-label">VIDEO ID</label>
           <input type="text" id="youtube-id" placeholder="dQw4w9WgXcQ">
           <p class="field-hint">ID из URL стрима (часть после ?v=)</p>
+        </div>
+        <div class="field">
+          <label class="field-label">YOUTUBE API KEY</label>
+          <div class="input-wrap">
+            <input type="password" id="yt-api-key" placeholder="AIzaSy...">
+            <button class="eye-btn" data-target="yt-api-key">
+              <svg class="eye-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              <svg class="eye-closed" style="display:none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+            </button>
+          </div>
+          <p class="field-hint">Получить на <a href="https://console.cloud.google.com/apis/credentials" target="_blank" style="color:var(--glow)">Google Cloud Console</a></p>
         </div>
       </div>
     </div>
@@ -517,10 +509,6 @@ input::placeholder{color:var(--text-m);}
           <div><div class="status-name">DONATION ALERTS</div><div class="status-info" id="about-da">—</div></div>
           <div class="sdot" id="about-d-da"></div>
         </div>
-        <div class="status-row">
-          <div><div class="status-name">DONATEX</div><div class="status-info" id="about-dx">—</div></div>
-          <div class="sdot" id="about-d-dx"></div>
-        </div>
       </div>
     </div>
 
@@ -597,26 +585,6 @@ document.getElementById('da-widget').addEventListener('input', function() {
   }
 });
 
-// ── DX TOKEN ──
-function extractDxToken(input) {
-  if (!input) return '';
-  // https://widget.donatepay.ru/alert-box/widget/{TOKEN}
-  // https://widget.donatepay.ru/widgets/{TOKEN}/...
-  const m = input.match(/widget\.donatepay\.ru\/(?:alert-box\/widget|widgets?)\/([^/?&\s]+)/);
-  if (m) return m[1];
-  return input.trim();
-}
-document.getElementById('dx-token').addEventListener('input', function() {
-  const val = this.value.trim();
-  if (!val) { document.getElementById('dx-hint').textContent = ''; return; }
-  const token = extractDxToken(val);
-  if (token !== val && token.length >= 4) {
-    document.getElementById('dx-hint').textContent = 'Токен: ' + token.slice(0,6) + '•••• (' + token.length + ' симв.)';
-  } else {
-    document.getElementById('dx-hint').textContent = '';
-  }
-});
-
 // ── HOTKEYS ──
 let capturingInput = null;
 document.querySelectorAll('.hotkey-input').forEach(input => {
@@ -664,8 +632,8 @@ API.onReady((s) => {
   if (s.twitchChannel)    document.getElementById('twitch-channel').value = s.twitchChannel;
   if (s.kickChannel)      document.getElementById('kick-channel').value = s.kickChannel;
   if (s.daToken)          document.getElementById('da-widget').value = s.daToken;
-  if (s.dxToken)          document.getElementById('dx-token').value = s.dxToken;
   if (s.youtubeVideoId)   document.getElementById('youtube-id').value = s.youtubeVideoId;
+  if (s.youtubeApiKey)    document.getElementById('yt-api-key').value = s.youtubeApiKey;
   if (s.opacity)          { document.getElementById('opacity').value = s.opacity; document.getElementById('opacity-val').textContent = s.opacity + '%'; }
   if (s.autoHide !== undefined) document.getElementById('auto-hide').value = s.autoHide || 0;
   if (s.donationSound !== undefined) document.getElementById('donation-sound').checked = s.donationSound !== false;
@@ -710,8 +678,8 @@ function collectSettings() {
     twitchChannel:     document.getElementById('twitch-channel').value.trim(),
     kickChannel:       document.getElementById('kick-channel').value.trim(),
     daToken:           extractDaToken(daRaw),
-    dxToken:           extractDxToken(document.getElementById('dx-token').value.trim()),
     youtubeVideoId:    document.getElementById('youtube-id').value.trim(),
+    youtubeApiKey:     document.getElementById('yt-api-key').value.trim(),
     opacity:           safeInt(document.getElementById('opacity').value, 85),
     autoHide:          safeInt(document.getElementById('auto-hide').value, 0),
     donationSound:     document.getElementById('donation-sound').checked,

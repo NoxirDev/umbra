@@ -38,8 +38,8 @@ function sanitizeSettings(s) {
   return {
     twitchChannel:    String(s.twitchChannel  || '').replace(/[^a-zA-Z0-9_]/g, '').slice(0, 25),
     youtubeVideoId:   String(s.youtubeVideoId || '').replace(/[^a-zA-Z0-9_\-]/g, '').slice(0, 20),
+    youtubeApiKey:    String(s.youtubeApiKey  || '').slice(0, 512),
     daToken:          String(s.daToken        || '').slice(0, 512),
-    dxToken:          String(s.dxToken        || '').slice(0, 512),
     opacity:          Math.min(100, Math.max(20, safeInt(s.opacity, 85))),
     donationSound:    s.donationSound !== false,
     donationDuration: Math.min(60, Math.max(0, safeInt(s.donationDuration, 8))),
