@@ -168,6 +168,7 @@ input::placeholder{color:var(--text-m);}
       <span class="nav-category-arrow">▼</span>
     </div>
     <div class="nav-group" data-group="system">
+      <div class="nav-item" data-page="obs">OBS</div>
       <div class="nav-item" data-page="api">API</div>
       <div class="nav-item" data-page="backup">Backup</div>
       <div class="nav-item" data-page="about">About</div>
@@ -502,6 +503,73 @@ input::placeholder{color:var(--text-m);}
       </div>
     </div>
 
+    <!-- OBS -->
+    <div class="page" id="page-obs">
+      <div class="page-title">OBS BROWSER SOURCE</div>
+      <div class="page-sub">Ссылки для добавления в OBS</div>
+
+      <div class="panel">
+        <div class="panel-title">ПОЛНЫЙ ОВЕРЛЕЙ</div>
+        <div class="field">
+          <label class="field-label">URL</label>
+          <div style="display:flex;gap:8px;">
+            <input type="text" id="obs-overlay-url" readonly style="flex:1;">
+            <button class="btn btn-secondary copy-btn" data-copy="obs-overlay-url">КОПИРОВАТЬ</button>
+          </div>
+          <p class="field-hint">Чат + донаты + цель. Размер: 1920x1080</p>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">ТОЛЬКО ЧАТ</div>
+        <div class="field">
+          <label class="field-label">URL</label>
+          <div style="display:flex;gap:8px;">
+            <input type="text" id="obs-chat-url" readonly style="flex:1;">
+            <button class="btn btn-secondary copy-btn" data-copy="obs-chat-url">КОПИРОВАТЬ</button>
+          </div>
+          <p class="field-hint">Только сообщения чата. Размер: 400x1080</p>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">ТОЛЬКО ДОНАТЫ</div>
+        <div class="field">
+          <label class="field-label">URL</label>
+          <div style="display:flex;gap:8px;">
+            <input type="text" id="obs-donations-url" readonly style="flex:1;">
+            <button class="btn btn-secondary copy-btn" data-copy="obs-donations-url">КОПИРОВАТЬ</button>
+          </div>
+          <p class="field-hint">Только алерты донатов. Размер: 1920x1080</p>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">ТОЛЬКО ЦЕЛЬ</div>
+        <div class="field">
+          <label class="field-label">URL</label>
+          <div style="display:flex;gap:8px;">
+            <input type="text" id="obs-goal-url" readonly style="flex:1;">
+            <button class="btn btn-secondary copy-btn" data-copy="obs-goal-url">КОПИРОВАТЬ</button>
+          </div>
+          <p class="field-hint">Только прогресс-бар цели. Размер: 600x100</p>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">ИНСТРУКЦИЯ</div>
+        <div style="color:var(--text-m);font-size:13px;line-height:1.6;">
+          <p style="margin-bottom:8px;">1. Скопируй нужную ссылку выше</p>
+          <p style="margin-bottom:8px;">2. В OBS добавь источник "Браузер" (Browser Source)</p>
+          <p style="margin-bottom:8px;">3. Вставь скопированную ссылку в поле URL</p>
+          <p style="margin-bottom:8px;">4. Установи размер (указан в подсказках)</p>
+          <p style="margin-bottom:8px;">5. Включи галочки:</p>
+          <p style="margin-left:16px;margin-bottom:4px;">• "Shutdown source when not visible"</p>
+          <p style="margin-left:16px;">• "Refresh browser when scene becomes active"</p>
+        </div>
+      </div>
+    </div>
+
     <!-- API -->
     <div class="page" id="page-api">
       <div class="page-title">UMBRA API</div>
@@ -680,6 +748,28 @@ document.getElementById('copy-key').addEventListener('click', () => {
   copyText(key).then(ok => showNotif(ok ? 'КЛЮЧ СКОПИРОВАН' : 'ОШИБКА КОПИРОВАНИЯ', ok ? 'success' : 'error'));
 });
 
+// ── COPY OBS URLS ──
+document.querySelectorAll('.copy-btn[data-copy]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const inputId = btn.getAttribute('data-copy');
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    const url = input.value;
+    if (!url) return;
+    const copyText = (text) => {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        return navigator.clipboard.writeText(text).then(() => true).catch(() => false);
+      }
+      const ta = document.createElement('textarea');
+      ta.value = text; ta.style.position='fixed'; ta.style.opacity='0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); document.body.removeChild(ta); return Promise.resolve(true); }
+      catch { document.body.removeChild(ta); return Promise.resolve(false); }
+    };
+    copyText(url).then(ok => showNotif(ok ? 'ССЫЛКА СКОПИРОВАНА' : 'ОШИБКА КОПИРОВАНИЯ', ok ? 'success' : 'error'));
+  });
+});
+
 // ── LOAD SETTINGS ──
 API.onReady((s) => {
   if (s.twitchChannel)    document.getElementById('twitch-channel').value = s.twitchChannel;
@@ -698,6 +788,13 @@ API.onReady((s) => {
   if (s.apiPort)          document.getElementById('api-port').value = s.apiPort;
   if (s.apiEnabled !== undefined) document.getElementById('api-enabled').checked = s.apiEnabled === true;
   if (s.apiKey)           document.getElementById('api-key-display').textContent = s.apiKey;
+
+  // OBS URLs
+  const port = s.apiPort || 4587;
+  document.getElementById('obs-overlay-url').value = `http://127.0.0.1:${port}/obs/overlay.html`;
+  document.getElementById('obs-chat-url').value = `http://127.0.0.1:${port}/obs/chat.html`;
+  document.getElementById('obs-donations-url').value = `http://127.0.0.1:${port}/obs/donations.html`;
+  document.getElementById('obs-goal-url').value = `http://127.0.0.1:${port}/obs/goal.html`;
   // New settings
   if (s.theme)            document.getElementById('theme-select').value = s.theme || 'default';
   if (s.fontSize)         { document.getElementById('font-size').value = s.fontSize || 13; document.getElementById('font-size-val').textContent = (s.fontSize || 13) + 'px'; }
