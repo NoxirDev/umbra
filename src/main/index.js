@@ -7,7 +7,7 @@ const CONSTANTS = require('../shared/constants');
 const SettingsManager = require('./settings');
 const WindowManager = require('./windows');
 const TrayManager = require('./tray');
-const ApiServer = require('./api-server');
+const ApiServer = require('./api-v2');
 const IpcHandlers = require('./ipc-handlers');
 
 // Single instance lock
