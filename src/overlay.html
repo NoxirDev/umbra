@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' 'unsafe-inline'; connect-src wss://irc-ws.chat.twitch.tv wss://ws-us2.pusher.com wss://socket.donationalerts.ru wss://centrifugo.donatepay.ru https://fonts.googleapis.com;">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' 'unsafe-inline'; connect-src wss://irc-ws.chat.twitch.tv wss://ws-us2.pusher.com wss://socket.donationalerts.ru https://www.googleapis.com https://fonts.googleapis.com;">
 <title>UMBRA</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -49,13 +49,13 @@ html,body{width:100%;height:100%;background:transparent;overflow:hidden;font-fam
 .msg.youtube{border-left-color:#ff0000;}
 .msg.kick{border-left-color:var(--kick);background:rgba(83,252,24,0.03);}
 .msg.kick .msg-author{color:var(--kick);text-shadow:0 0 8px var(--kick);}
-.msg.da,.msg.dx{border-left-color:var(--glow);background:rgba(255,255,255,0.03);}
-.msg.da .msg-author,.msg.dx .msg-author{color:var(--glow);text-shadow:0 0 8px var(--glow);}
+.msg.da{border-left-color:var(--glow);background:rgba(255,255,255,0.03);}
+.msg.da .msg-author{color:var(--glow);text-shadow:0 0 8px var(--glow);}
 .msg.api .msg-author{color:var(--api);}
 .msg-top{display:flex;align-items:center;gap:5px;margin-bottom:2px;}
 .badge{font-family:'Bebas Neue',sans-serif;font-size:9px;letter-spacing:1px;padding:1px 5px;border-radius:2px;}
 .b-tw{background:rgba(145,71,255,.25);color:#c084fc;}.b-yt{background:rgba(255,0,0,.2);color:#f87171;}
-.b-da{background:rgba(255,255,255,.1);color:var(--glow-muted);}.b-dx{background:rgba(255,255,255,.1);color:var(--glow-muted);}
+.b-da{background:rgba(255,255,255,.1);color:var(--glow-muted);}
 .b-kick{background:rgba(83,252,24,.15);color:var(--kick);}.b-api{background:rgba(255,200,50,.12);color:var(--api);}
 .b-test{background:rgba(255,255,255,.08);color:var(--text-dim);}
 .msg-author{font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:1px;color:var(--glow-muted);}
@@ -65,6 +65,8 @@ html,body{width:100%;height:100%;background:transparent;overflow:hidden;font-fam
 #resize-handle:hover{opacity:0.6;}
 #goal{cursor:move;}
 #goal:active{opacity:0.85;}
+#msgs-wrap{cursor:move;}
+#msgs-wrap:active{opacity:0.95;}
 .pt{position:fixed;pointer-events:none;font-size:16px;animation:floatUp 1.5s ease-out forwards;z-index:9999;}
 @keyframes floatUp{0%{transform:translateY(0) scale(1);opacity:1}100%{transform:translateY(-80px) scale(.3);opacity:0}}
 </style>
@@ -134,11 +136,10 @@ API.onApplySettings((s)=>{
   }
 
   // Проверяем изменились ли подключения — переподключаем только если да
-  const isFirstLoad = !settings.twitchChannel && !settings.daToken && !settings.dxToken && !settings.kickChannel;
+  const isFirstLoad = !settings.twitchChannel && !settings.daToken && !settings.kickChannel && !settings.youtubeVideoId;
   const needReconnect = isFirstLoad ||
     settings.twitchChannel !== s.twitchChannel ||
     settings.daToken !== s.daToken ||
-    settings.dxToken !== s.dxToken ||
     settings.kickChannel !== s.kickChannel ||
     settings.youtubeVideoId !== s.youtubeVideoId;
 
@@ -224,8 +225,8 @@ function addMsg(platform,author,text,color,isDon,amount){
 function render(){
   const list=document.getElementById('msgs');
   list.innerHTML='';
-  const bm={twitch:'b-tw',youtube:'b-yt',da:'b-da',dx:'b-dx',kick:'b-kick',api:'b-api',test:'b-test'};
-  const lm={twitch:'TW',youtube:'YT',da:'DA',dx:'DX',kick:'KICK',api:'API',test:'TEST'};
+  const bm={twitch:'b-tw',youtube:'b-yt',da:'b-da',kick:'b-kick',api:'b-api',test:'b-test'};
+  const lm={twitch:'TW',youtube:'YT',da:'DA',kick:'KICK',api:'API',test:'TEST'};
   messages.forEach(m=>{
     if(filter!=='all'&&filter!=='don'&&m.platform!==filter)return;
     if(filter==='don'&&!m.isDon)return;
@@ -306,7 +307,7 @@ function showDon(name,amount,msg,platform){
   document.getElementById('don-name').textContent=esc(name);
   document.getElementById('don-amount').textContent=esc(amount);
   document.getElementById('don-text').textContent=esc(msg);
-  document.getElementById('don-icon').textContent=platform==='dx'?'💎':platform==='kick'?'🟢':platform==='api'?'⚡':'🎉';
+  document.getElementById('don-icon').textContent=platform==='kick'?'🟢':platform==='api'?'⚡':'🎉';
   const alert=document.getElementById('don-alert');
   alert.classList.remove('show');void alert.offsetWidth;alert.classList.add('show');
   playDonationSound();spawnParticles();
@@ -341,16 +342,21 @@ function spawnParticles(){
   window.addEventListener('blur',()=>{if(active){active=false;API.stopResize();}});
 })();
 
-// MOVE — goal блок как ручка перемещения
+// MOVE — goal и msgs-wrap как ручки перемещения
 (function(){
   const goal=document.getElementById('goal');
+  const msgs=document.getElementById('msgs-wrap');
   let active=false;
-  goal.addEventListener('mousedown',e=>{
+
+  const startMove = (e) => {
     if(e.button!==0)return;
     active=true;
     e.preventDefault();
     API.startMove();
-  });
+  };
+
+  goal.addEventListener('mousedown',startMove);
+  msgs.addEventListener('mousedown',startMove);
   window.addEventListener('mouseup',()=>{if(!active)return;active=false;API.stopMove();});
   window.addEventListener('blur',()=>{if(active){active=false;API.stopMove();}});
 })();
@@ -473,30 +479,7 @@ function daConnect(){
   if(ws){const prev=ws.onclose;ws.onclose=()=>{clearInterval(ping);auth=false;if(prev)prev();};}
 }
 
-// DONATEX
-const dxService=createService('dx',()=>dxConnect());
-function dxConnect(){
-  if(!settings.dxToken){dxService.disconnect();return;}
-  dxService.connect(
-    'wss://centrifugo.donatepay.ru/connection/websocket',
-    (ws)=>ws.send(JSON.stringify({params:{token:settings.dxToken.trim()},id:1})),
-    (ws,data)=>{
-      if(data==='{}'){ws.send('{}');return;}
-      let d;try{d=JSON.parse(data);}catch(e){return;}
-      if(!d)return;
-      if(d.id===1&&d.result&&d.result.client){ws.send(JSON.stringify({method:1,params:{channel:'$public:'+d.result.client},id:2}));}
-      if(d.id===undefined&&!d.push){ws.send('{}');return;}
-      if(d.push&&d.push.pub&&d.push.pub.data){
-        const n=d.push.pub.data.notification;
-        if(n&&n.type==='donation'){
-          const amt=n.sum+' ₽';
-          addMsg('dx',n.name||'anonymous',amt+(n.comment?': '+n.comment:''),'#a8a8b3',true,amt);
-          handleDonation(n.sum,n.name||'anonymous',n.comment||'','dx');
-        }
-      }
-    }
-  );
-}
+// DONATEX - REMOVED (DonatePay integration removed)
 
 // KICK
 const kickService=createService('kick',()=>kickConnect());
@@ -526,6 +509,59 @@ function kickConnect(){
   );
 }
 
+// YOUTUBE LIVE CHAT
+let ytPollInterval=null;
+let ytNextPageToken='';
+function youtubeDisconnect(){
+  if(ytPollInterval){clearInterval(ytPollInterval);ytPollInterval=null;}
+  ytNextPageToken='';
+}
+function youtubeConnect(){
+  if(!settings.youtubeVideoId){youtubeDisconnect();return;}
+  youtubeDisconnect();
+
+  // YouTube Live Chat требует API key - используем polling через публичный API
+  const pollChat = async () => {
+    try {
+      if(!settings.youtubeApiKey) return;
+
+      // Получаем liveChatId из видео
+      const videoUrl = `https://www.googleapis.com/youtube/v3/videos?part=liveStreamingDetails&id=${settings.youtubeVideoId}&key=${settings.youtubeApiKey}`;
+      const videoRes = await fetch(videoUrl);
+      if(!videoRes.ok) return;
+      const videoData = await videoRes.json();
+      const liveChatId = videoData.items?.[0]?.liveStreamingDetails?.activeLiveChatId;
+      if(!liveChatId) return;
+
+      // Получаем сообщения чата
+      const chatUrl = `https://www.googleapis.com/youtube/v3/liveChat/messages?liveChatId=${liveChatId}&part=snippet,authorDetails&pageToken=${ytNextPageToken}&key=${settings.youtubeApiKey}`;
+      const chatRes = await fetch(chatUrl);
+      if(!chatRes.ok) return;
+      const chatData = await chatRes.json();
+
+      ytNextPageToken = chatData.nextPageToken || '';
+
+      chatData.items?.forEach(item => {
+        const author = item.authorDetails?.displayName || 'anonymous';
+        const text = item.snippet?.displayMessage || '';
+        addMsg('youtube', author, text, '#ff0000', false, null);
+      });
+
+      // Следующий опрос через pollingIntervalMillis
+      const delay = chatData.pollingIntervalMillis || 5000;
+      ytPollInterval = setTimeout(pollChat, delay);
+    } catch(e) {
+      console.error('[YouTube] polling error:', e);
+      ytPollInterval = setTimeout(pollChat, 10000);
+    }
+  };
+
+  // Запускаем только если есть API ключ
+  if(settings.youtubeApiKey) {
+    pollChat();
+  }
+}
+
 // API EVENTS
 if(API.onApiEvent){
   API.onApiEvent((ev)=>{
@@ -551,7 +587,7 @@ if(API.onApiEvent){
 if(API.onGoalReset){API.onGoalReset(()=>{goalCurrent=0;updateGoalBar();});}
 if(API.onTestDonation){API.onTestDonation((d)=>{const amt=Math.max(0,Number(d.amount)||0);addMsg('test',d.name,String(amt),'#a8a8b3',true,String(amt));handleDonation(amt,d.name,'Test Donation','test');});}
 
-function reconnectAll(){twitchConnect();daConnect();dxConnect();kickConnect();}
+function reconnectAll(){twitchConnect();daConnect();kickConnect();youtubeConnect();}
 
 setTimeout(()=>addMsg('da','UMBRA','UMBRA v2 ready / Created by Noxir (KayROSir)','#6b6b78',false,null),300);
 API.requestSettings();
