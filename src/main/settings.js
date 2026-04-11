@@ -10,29 +10,57 @@ class SettingsManager {
     this.settings = this.load();
   }
 
+  /**
+   * Load settings from disk with error handling
+   */
   load() {
     try {
       if (fs.existsSync(this.settingsPath)) {
         const data = fs.readFileSync(this.settingsPath, 'utf8');
-        return this.sanitize(JSON.parse(data));
+        const parsed = JSON.parse(data);
+        return this.sanitize(parsed);
       }
     } catch (error) {
-      console.error('Failed to load settings:', error);
+      console.error('[Settings] Failed to load:', error.message);
+      // Try to backup corrupted file
+      this.backupCorruptedFile();
     }
     return this.getDefaults();
   }
 
+  /**
+   * Backup corrupted settings file
+   */
+  backupCorruptedFile() {
+    try {
+      if (fs.existsSync(this.settingsPath)) {
+        const backupPath = this.settingsPath + '.backup.' + Date.now();
+        fs.copyFileSync(this.settingsPath, backupPath);
+        console.log('[Settings] Corrupted file backed up to:', backupPath);
+      }
+    } catch (err) {
+      console.error('[Settings] Failed to backup corrupted file:', err.message);
+    }
+  }
+
+  /**
+   * Save settings to disk with error handling
+   */
   save(settings) {
     try {
       this.settings = this.sanitize(settings);
-      fs.writeFileSync(
-        this.settingsPath,
-        JSON.stringify(this.settings, null, 2),
-        'utf8'
-      );
+      const data = JSON.stringify(this.settings, null, 2);
+
+      // Atomic write: write to temp file first
+      const tempPath = this.settingsPath + '.tmp';
+      fs.writeFileSync(tempPath, data, 'utf8');
+
+      // Rename temp file to actual file (atomic on most systems)
+      fs.renameSync(tempPath, this.settingsPath);
+
       return true;
     } catch (error) {
-      console.error('Failed to save settings:', error);
+      console.error('[Settings] Failed to save:', error.message);
       return false;
     }
   }

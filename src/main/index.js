@@ -17,7 +17,9 @@ if (!gotLock) {
   process.exit(0);
 }
 
-// Block navigation & new windows
+/**
+ * Security: Block navigation & new windows
+ */
 app.on('web-contents-created', (_e, contents) => {
   contents.on('will-navigate', (e, url) => {
     if (!url.startsWith('file://')) e.preventDefault();
@@ -42,7 +44,9 @@ const settingsManager = new SettingsManager();
 const windowManager = new WindowManager(iconPath, iconPathIco);
 const apiServer = new ApiServer(settingsManager, windowManager);
 
-// Click-through state (shared between tray and IPC)
+/**
+ * Click-through state (shared between tray and IPC)
+ */
 const clickThroughState = {
   enabled: false,
   get: () => clickThroughState.enabled,
@@ -67,7 +71,9 @@ const clickThroughState = {
 const trayManager = new TrayManager(iconPath, iconPathIco, windowManager, clickThroughState);
 const ipcHandlers = new IpcHandlers(settingsManager, windowManager, apiServer, trayManager);
 
-// App ready
+/**
+ * App ready - Initialize application
+ */
 app.whenReady().then(() => {
   nativeTheme.themeSource = 'dark';
 
@@ -96,12 +102,16 @@ app.whenReady().then(() => {
   ipcHandlers.registerHotkeys(settings.hotkeys);
 });
 
-// Cleanup on quit
+/**
+ * Cleanup on quit
+ */
 app.on('will-quit', () => {
   globalShortcut.unregisterAll();
 });
 
-// Second instance
+/**
+ * Second instance - focus settings window
+ */
 app.on('second-instance', () => {
   const settingsWindow = windowManager.getSettingsWindow();
   if (settingsWindow) {
@@ -111,12 +121,16 @@ app.on('second-instance', () => {
   }
 });
 
-// Don't quit on all windows closed (tray app)
+/**
+ * Don't quit on all windows closed (tray app)
+ */
 app.on('window-all-closed', () => {
   // Keep running in tray
 });
 
-// Before quit cleanup
+/**
+ * Before quit cleanup
+ */
 app.on('before-quit', () => {
   apiServer.stop();
   ipcHandlers.cleanup();

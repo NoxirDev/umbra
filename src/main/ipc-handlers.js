@@ -14,6 +14,11 @@ class IpcHandlers {
     this.resizeStart = null;
     this.moveInterval = null;
     this.moveStart = null;
+
+    // Optimized polling rates
+    this.CT_POLL_RATE = 50; // 50ms for click-through (was 32ms)
+    this.RESIZE_RATE = 16; // 60fps for smooth resize
+    this.MOVE_RATE = 16; // 60fps for smooth move
   }
 
   register() {
@@ -102,7 +107,7 @@ class IpcHandlers {
       this.windowManager.createSettingsWindow(this.settingsManager.get());
     });
 
-    // Resize
+    // Resize with optimized interval
     ipcMain.on('start-resize', () => {
       const overlay = this.windowManager.getOverlayWindow();
       if (!overlay) return;
@@ -119,26 +124,19 @@ class IpcHandlers {
       if (this.resizeInterval) clearInterval(this.resizeInterval);
       this.resizeInterval = setInterval(() => {
         if (!overlay || !this.resizeStart) {
-          clearInterval(this.resizeInterval);
-          this.resizeInterval = null;
+          this.stopResize();
           return;
         }
         const now = screen.getCursorScreenPoint();
         const w = Math.min(800, Math.max(280, this.resizeStart.winW + (now.x - this.resizeStart.cursorX)));
         const h = Math.min(1200, Math.max(300, this.resizeStart.winH + (now.y - this.resizeStart.cursorY)));
         overlay.setBounds({ width: w, height: h });
-      }, 16);
+      }, this.RESIZE_RATE);
     });
 
-    ipcMain.on('stop-resize', () => {
-      if (this.resizeInterval) {
-        clearInterval(this.resizeInterval);
-        this.resizeInterval = null;
-      }
-      this.resizeStart = null;
-    });
+    ipcMain.on('stop-resize', () => this.stopResize());
 
-    // Move
+    // Move with optimized interval
     ipcMain.on('start-move', () => {
       const overlay = this.windowManager.getOverlayWindow();
       if (!overlay) return;
@@ -155,8 +153,7 @@ class IpcHandlers {
       if (this.moveInterval) clearInterval(this.moveInterval);
       this.moveInterval = setInterval(() => {
         if (!overlay || !this.moveStart) {
-          clearInterval(this.moveInterval);
-          this.moveInterval = null;
+          this.stopMove();
           return;
         }
         const now = screen.getCursorScreenPoint();
@@ -164,32 +161,57 @@ class IpcHandlers {
           x: this.moveStart.winX + (now.x - this.moveStart.cursorX),
           y: this.moveStart.winY + (now.y - this.moveStart.cursorY),
         });
-      }, 16);
+      }, this.MOVE_RATE);
     });
 
-    ipcMain.on('stop-move', () => {
-      if (this.moveInterval) {
-        clearInterval(this.moveInterval);
-        this.moveInterval = null;
-      }
-      this.moveStart = null;
-    });
+    ipcMain.on('stop-move', () => this.stopMove());
   }
 
+  stopResize() {
+    if (this.resizeInterval) {
+      clearInterval(this.resizeInterval);
+      this.resizeInterval = null;
+    }
+    this.resizeStart = null;
+  }
+
+  stopMove() {
+    if (this.moveInterval) {
+      clearInterval(this.moveInterval);
+      this.moveInterval = null;
+    }
+    this.moveStart = null;
+  }
+
+  /**
+   * Optimized click-through polling with better performance
+   */
   startCtPolling() {
     if (this.ctPollInterval) return;
+
     this.ctPollInterval = setInterval(() => {
       if (!this.clickThroughEnabled) return;
+
       const overlay = this.windowManager.getOverlayWindow();
-      if (!overlay) return;
+      if (!overlay) {
+        this.stopCtPolling();
+        return;
+      }
 
       const cur = screen.getCursorScreenPoint();
       const ob = overlay.getBounds();
       const lx = cur.x - ob.x;
       const ly = cur.y - ob.y;
 
+      // Quick bounds check first
+      if (lx < 0 || ly < 0 || lx > ob.width || ly > ob.height) {
+        overlay.setIgnoreMouseEvents(true, { forward: true });
+        return;
+      }
+
+      // Check UI bounds
       let overUI = false;
-      if (this.ctUIBounds && Array.isArray(this.ctUIBounds)) {
+      if (this.ctUIBounds?.length) {
         for (const b of this.ctUIBounds) {
           if (lx >= b.x && lx <= b.x + b.w && ly >= b.y && ly <= b.y + b.h) {
             overUI = true;
@@ -197,8 +219,9 @@ class IpcHandlers {
           }
         }
       }
+
       overlay.setIgnoreMouseEvents(!overUI, { forward: true });
-    }, 32);
+    }, this.CT_POLL_RATE);
   }
 
   stopCtPolling() {
@@ -295,14 +318,8 @@ class IpcHandlers {
 
   cleanup() {
     this.stopCtPolling();
-    if (this.resizeInterval) {
-      clearInterval(this.resizeInterval);
-      this.resizeInterval = null;
-    }
-    if (this.moveInterval) {
-      clearInterval(this.moveInterval);
-      this.moveInterval = null;
-    }
+    this.stopResize();
+    this.stopMove();
   }
 }
 

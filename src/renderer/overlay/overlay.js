@@ -33,11 +33,12 @@
   let clickThrough = false;
   let autoHideTimer = null;
 
-  // Combo system
+  // Combo system with optimized timeout
   let comboSum = 0;
   let comboTimer = null;
   let comboCount = 0;
   let comboPending = null;
+  const COMBO_TIMEOUT = 5000; // 5 seconds
 
   // Initialize
   document.addEventListener('DOMContentLoaded', () => {
@@ -155,34 +156,47 @@
     }
   }
 
-  // Click-through
+  // Click-through with debounced bounds update
   function setClickThrough(on) {
     clickThrough = on;
     API.toggleClickThrough(on);
     if (on) sendUIBounds();
   }
 
+  let boundsUpdateTimer = null;
   function sendUIBounds() {
-    const ids = ['goal', 'msgs-wrap', 'resize-handle', 'don-alert'];
-    const bounds = [];
-    for (const id of ids) {
-      const el = document.getElementById(id);
-      if (!el) continue;
-      const r = el.getBoundingClientRect();
-      if (r.width > 0 && r.height > 0) {
-        bounds.push({
-          x: Math.floor(r.left),
-          y: Math.floor(r.top),
-          w: Math.ceil(r.width),
-          h: Math.ceil(r.height),
-        });
+    // Debounce bounds updates
+    if (boundsUpdateTimer) return;
+
+    boundsUpdateTimer = setTimeout(() => {
+      const ids = ['goal', 'msgs-wrap', 'resize-handle', 'don-alert'];
+      const bounds = [];
+      for (const id of ids) {
+        const el = document.getElementById(id);
+        if (!el) continue;
+        const r = el.getBoundingClientRect();
+        if (r.width > 0 && r.height > 0) {
+          bounds.push({
+            x: Math.floor(r.left),
+            y: Math.floor(r.top),
+            w: Math.ceil(r.width),
+            h: Math.ceil(r.height),
+          });
+        }
       }
-    }
-    API.updateUIBounds(bounds);
+      API.updateUIBounds(bounds);
+      boundsUpdateTimer = null;
+    }, 100); // Debounce 100ms
   }
 
+  let resizeDebounce = null;
   window.addEventListener('resize', () => {
-    if (clickThrough) sendUIBounds();
+    if (!clickThrough) return;
+    if (resizeDebounce) clearTimeout(resizeDebounce);
+    resizeDebounce = setTimeout(() => {
+      sendUIBounds();
+      resizeDebounce = null;
+    }, 150);
   });
 
   // Register API handlers
@@ -271,7 +285,7 @@
     });
   }
 
-  // Donation handler with combo system
+  // Donation handler with optimized combo system
   function handleDonation(amount, name, message, platform) {
     const safe = Math.max(0, Number(amount) || 0);
     if (safe <= 0) return;
@@ -288,10 +302,12 @@
       } else {
         window.DonationsUI.showDonation('COMBO x' + comboCount, String(comboSum), '🔥 DONATION COMBO', comboPending.platform);
       }
+      // Reset combo state
       comboSum = 0;
       comboCount = 0;
       comboPending = null;
-    }, 5000);
+      comboTimer = null;
+    }, COMBO_TIMEOUT);
   }
 
   // Reconnect all services

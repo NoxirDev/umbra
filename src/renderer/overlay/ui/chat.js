@@ -7,6 +7,7 @@
   const MAX_MESSAGES = 100;
   let messages = [];
   let blockedWords = [];
+  let renderScheduled = false;
 
   const BADGE_MAP = {
     twitch: 'b-tw',
@@ -49,7 +50,7 @@
     ) {
       last.count = (last.count || 1) + 1;
       last.time = time;
-      render();
+      scheduleRender();
       return;
     }
 
@@ -68,14 +69,27 @@
       messages.shift();
     }
 
-    render();
+    scheduleRender();
+  }
+
+  /**
+   * Schedule render using requestAnimationFrame for better performance
+   */
+  function scheduleRender() {
+    if (renderScheduled) return;
+    renderScheduled = true;
+    requestAnimationFrame(() => {
+      render();
+      renderScheduled = false;
+    });
   }
 
   function render() {
     const list = document.getElementById('msgs');
     if (!list) return;
 
-    list.innerHTML = '';
+    // Use DocumentFragment for better performance
+    const fragment = document.createDocumentFragment();
 
     messages.forEach((m) => {
       const msg = createElement('div', 'msg ' + m.platform);
@@ -101,9 +115,12 @@
       const textContent = m.count > 1 ? m.text + ' (x' + m.count + ')' : m.text;
       msg.appendChild(createElement('div', 'msg-text', textContent));
 
-      list.appendChild(msg);
+      fragment.appendChild(msg);
     });
 
+    // Clear and append in one operation
+    list.innerHTML = '';
+    list.appendChild(fragment);
     list.scrollTop = list.scrollHeight;
   }
 

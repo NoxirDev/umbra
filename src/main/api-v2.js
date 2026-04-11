@@ -1,6 +1,8 @@
 // UMBRA API v2 - Professional REST + WebSocket API
 const http = require('http');
 const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
 const { WebSocketServer } = require('ws');
 const CONSTANTS = require('../shared/constants');
 
@@ -13,30 +15,65 @@ class ApiServerV2 {
     this.rateLimit = new Map();
     this.rateLimitCleanup = null;
 
-    // Event history
+    // Event history with optimized limits
     this.donationHistory = [];
     this.messageHistory = [];
-    this.eventHistory = [];
-    this.maxHistorySize = 1000;
+    this.maxHistorySize = 500; // Reduced from 1000
 
     // Webhooks
     this.webhooks = [];
 
     // WebSocket clients
     this.wsClients = new Set();
+
+    // OBS pages cache
+    this.obsPageCache = new Map();
+    this.cacheOBSPages();
+  }
+
+  /**
+   * Pre-cache OBS HTML pages for faster serving
+   */
+  cacheOBSPages() {
+    const pages = ['overlay', 'chat', 'donations', 'goal'];
+    pages.forEach(page => {
+      const filePath = path.join(__dirname, '..', 'renderer', 'obs', `${page}.html`);
+      try {
+        if (fs.existsSync(filePath)) {
+          const content = fs.readFileSync(filePath, 'utf8');
+          this.obsPageCache.set(page, content);
+        }
+      } catch (err) {
+        console.error(`Failed to cache OBS page ${page}:`, err.message);
+      }
+    });
   }
 
   start(port, apiKey) {
     this.stop();
 
-    // Rate limiting cleanup
-    this.rateLimitCleanup = setInterval(() => this.rateLimit.clear(), 60000);
+    // Rate limiting cleanup - optimized interval
+    this.rateLimitCleanup = setInterval(() => {
+      const now = Date.now();
+      for (const [ip, timestamps] of this.rateLimit.entries()) {
+        const filtered = timestamps.filter(t => t > now - 60000);
+        if (filtered.length === 0) {
+          this.rateLimit.delete(ip);
+        } else {
+          this.rateLimit.set(ip, filtered);
+        }
+      }
+    }, 30000); // Every 30s instead of clearing all
 
     // HTTP Server
     this.httpServer = http.createServer((req, res) => this.handleRequest(req, res, apiKey));
 
-    // WebSocket Server
-    this.wsServer = new WebSocketServer({ server: this.httpServer });
+    // WebSocket Server with optimized settings
+    this.wsServer = new WebSocketServer({
+      server: this.httpServer,
+      perMessageDeflate: false, // Disable compression for lower latency
+      maxPayload: 64 * 1024 // 64KB max message size
+    });
     this.wsServer.on('connection', (ws, req) => this.handleWebSocket(ws, req, apiKey));
 
     this.httpServer.on('error', (e) => {
@@ -301,10 +338,10 @@ class ApiServerV2 {
         settings.goalCurrent = (settings.goalCurrent || 0) + (parseFloat(donation.amount) || 0);
         this.settingsManager.save(settings);
 
-        // Save to history
+        // Save to history with auto-cleanup
         this.donationHistory.unshift(donation);
         if (this.donationHistory.length > this.maxHistorySize) {
-          this.donationHistory.pop();
+          this.donationHistory.length = this.maxHistorySize; // Truncate instead of pop
         }
 
         // Broadcast to WebSocket clients
@@ -318,11 +355,12 @@ class ApiServerV2 {
     }
 
     if (method === 'GET' && url === '/v2/donations') {
-      const limit = parseInt(req.url.split('limit=')[1]) || 50;
+      const limit = Math.min(parseInt(req.url.split('limit=')[1]) || 50, this.maxHistorySize);
       this.sendSuccess(res, {
         donations: this.donationHistory.slice(0, limit),
         total: this.donationHistory.length,
       });
+      return;
     }
 
     this.sendError(res, 405, 'Method not allowed');
@@ -351,10 +389,10 @@ class ApiServerV2 {
           });
         }
 
-        // Save to history
+        // Save to history with auto-cleanup
         this.messageHistory.unshift(message);
         if (this.messageHistory.length > this.maxHistorySize) {
-          this.messageHistory.pop();
+          this.messageHistory.length = this.maxHistorySize; // Truncate
         }
 
         // Broadcast to WebSocket clients
@@ -368,11 +406,12 @@ class ApiServerV2 {
     }
 
     if (method === 'GET' && url === '/v2/messages') {
-      const limit = parseInt(req.url.split('limit=')[1]) || 100;
+      const limit = Math.min(parseInt(req.url.split('limit=')[1]) || 100, this.maxHistorySize);
       this.sendSuccess(res, {
         messages: this.messageHistory.slice(0, limit),
         total: this.messageHistory.length,
       });
+      return;
     }
 
     this.sendError(res, 405, 'Method not allowed');
@@ -592,38 +631,34 @@ class ApiServerV2 {
     this.sendError(res, 405, 'Method not allowed');
   }
 
+  /**
+   * Serve OBS pages from cache (optimized)
+   */
   serveOBSPage(url, req, res) {
-    const fs = require('fs');
-    const path = require('path');
-
-    // Map URL to file
-    let filePath;
-    if (url.startsWith('/obs/overlay')) {
-      filePath = path.join(__dirname, '..', 'renderer', 'obs', 'overlay.html');
-    } else if (url.startsWith('/obs/chat')) {
-      filePath = path.join(__dirname, '..', 'renderer', 'obs', 'chat.html');
-    } else if (url.startsWith('/obs/donations')) {
-      filePath = path.join(__dirname, '..', 'renderer', 'obs', 'donations.html');
-    } else if (url.startsWith('/obs/goal')) {
-      filePath = path.join(__dirname, '..', 'renderer', 'obs', 'goal.html');
-    } else {
-      res.writeHead(404);
+    // Map URL to page name
+    let pageName;
+    if (url.startsWith('/obs/overlay')) pageName = 'overlay';
+    else if (url.startsWith('/obs/chat')) pageName = 'chat';
+    else if (url.startsWith('/obs/donations')) pageName = 'donations';
+    else if (url.startsWith('/obs/goal')) pageName = 'goal';
+    else {
+      res.writeHead(404, { 'Content-Type': 'text/plain' });
       res.end('Not found');
       return;
     }
 
-    // Read and serve file
-    fs.readFile(filePath, 'utf8', (err, data) => {
-      if (err) {
-        console.error('Failed to read OBS file:', err);
-        res.writeHead(404);
-        res.end('File not found');
-        return;
-      }
-
-      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-      res.end(data);
-    });
+    // Serve from cache
+    const content = this.obsPageCache.get(pageName);
+    if (content) {
+      res.writeHead(200, {
+        'Content-Type': 'text/html; charset=utf-8',
+        'Cache-Control': 'public, max-age=3600'
+      });
+      res.end(content);
+    } else {
+      res.writeHead(404, { 'Content-Type': 'text/plain' });
+      res.end('Page not found');
+    }
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -678,17 +713,33 @@ class ApiServerV2 {
     }
   }
 
+  /**
+   * Broadcast message to all connected WebSocket clients (optimized)
+   */
   broadcast(data) {
+    if (this.wsClients.size === 0) return;
+
     const message = JSON.stringify({
       ...data,
       timestamp: new Date().toISOString(),
     });
 
+    // Remove dead connections while broadcasting
+    const deadClients = [];
     this.wsClients.forEach((client) => {
-      if (client.readyState === 1) {
-        client.send(message);
+      if (client.readyState === 1) { // OPEN
+        try {
+          client.send(message);
+        } catch (err) {
+          deadClients.push(client);
+        }
+      } else if (client.readyState > 1) { // CLOSING or CLOSED
+        deadClients.push(client);
       }
     });
+
+    // Clean up dead connections
+    deadClients.forEach(client => this.wsClients.delete(client));
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -720,36 +771,61 @@ class ApiServerV2 {
   // HELPERS
   // ═══════════════════════════════════════════════════════════
 
+  /**
+   * Optimized rate limiting check
+   */
   checkRateLimit(req, res) {
     const clientIp = req.socket.remoteAddress;
-    let reqs = (this.rateLimit.get(clientIp) || []).filter(
-      (t) => t > Date.now() - 60000
-    );
-    if (reqs.length >= CONSTANTS.API_RATE_LIMIT) {
+    const now = Date.now();
+    const windowStart = now - 60000;
+
+    let requests = this.rateLimit.get(clientIp);
+    if (!requests) {
+      this.rateLimit.set(clientIp, [now]);
+      return true;
+    }
+
+    // Filter old requests
+    requests = requests.filter(t => t > windowStart);
+
+    if (requests.length >= CONSTANTS.API_RATE_LIMIT) {
       this.sendError(res, 429, 'Too many requests');
       return false;
     }
-    this.rateLimit.set(clientIp, [...reqs, Date.now()]);
+
+    requests.push(now);
+    this.rateLimit.set(clientIp, requests);
     return true;
   }
 
+  /**
+   * Optimized body reading with streaming
+   */
   readBody(req, res, callback) {
     let body = '';
-    req.on('data', (d) => {
-      body += d;
-      if (body.length > CONSTANTS.MAX_BODY_SIZE) {
+    let size = 0;
+
+    req.on('data', (chunk) => {
+      size += chunk.length;
+      if (size > CONSTANTS.MAX_BODY_SIZE) {
         this.sendError(res, 413, 'Payload too large');
         req.destroy();
+        return;
       }
+      body += chunk;
     });
 
     req.on('end', () => {
       try {
-        const data = JSON.parse(body || '{}');
+        const data = body ? JSON.parse(body) : {};
         callback(data);
       } catch {
         this.sendError(res, 400, 'Invalid JSON');
       }
+    });
+
+    req.on('error', () => {
+      this.sendError(res, 400, 'Request error');
     });
   }
 
