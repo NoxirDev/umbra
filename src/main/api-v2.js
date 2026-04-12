@@ -7,9 +7,11 @@ const { WebSocketServer } = require('ws');
 const CONSTANTS = require('../shared/constants');
 
 class ApiServerV2 {
-  constructor(settingsManager, windowManager) {
+  constructor(settingsManager, windowManager, statisticsManager, notificationManager) {
     this.settingsManager = settingsManager;
     this.windowManager = windowManager;
+    this.statisticsManager = statisticsManager;
+    this.notificationManager = notificationManager;
     this.httpServer = null;
     this.wsServer = null;
     this.rateLimit = new Map();
@@ -160,6 +162,11 @@ class ApiServerV2 {
   }
 
   routeRequest(method, url, req, res) {
+    // Web Dashboard
+    if (method === 'GET' && (url === '/dashboard' || url === '/')) {
+      return this.serveWebDashboard(req, res);
+    }
+
     // OBS Browser Source pages (serve HTML files)
     if (method === 'GET' && url.startsWith('/obs/')) {
       return this.serveOBSPage(url, req, res);
@@ -230,6 +237,11 @@ class ApiServerV2 {
       return this.handleOBS(method, url, req, res);
     }
 
+    // Statistics
+    if (url.startsWith('/v2/statistics')) {
+      return this.handleStatistics(method, url, req, res);
+    }
+
     this.sendError(res, 404, 'Endpoint not found');
   }
 
@@ -290,6 +302,8 @@ class ApiServerV2 {
 
   handleStats(req, res) {
     const settings = this.settingsManager.get();
+    const totalEvents = this.donationHistory.length + this.messageHistory.length;
+
     this.sendSuccess(res, {
       goal: {
         current: settings.goalCurrent || 0,
@@ -302,7 +316,7 @@ class ApiServerV2 {
       history: {
         donations: this.donationHistory.length,
         messages: this.messageHistory.length,
-        events: this.eventHistory.length,
+        total_events: totalEvents,
       },
       session: {
         total_donations: this.donationHistory.reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0),
@@ -342,6 +356,27 @@ class ApiServerV2 {
         this.donationHistory.unshift(donation);
         if (this.donationHistory.length > this.maxHistorySize) {
           this.donationHistory.length = this.maxHistorySize; // Truncate instead of pop
+        }
+
+        // Record in statistics
+        if (this.statisticsManager) {
+          this.statisticsManager.recordDonation(donation);
+        }
+
+        // Show desktop notification
+        if (this.notificationManager) {
+          this.notificationManager.notifyDonation(donation);
+        }
+
+        // Check if goal reached (reuse settings from above)
+        if (settings.goalTarget > 0 && settings.goalCurrent >= settings.goalTarget) {
+          if (this.notificationManager) {
+            this.notificationManager.notifyGoalReached({
+              title: settings.goalTitle,
+              current: settings.goalCurrent,
+              target: settings.goalTarget,
+            });
+          }
         }
 
         // Broadcast to WebSocket clients
@@ -393,6 +428,11 @@ class ApiServerV2 {
         this.messageHistory.unshift(message);
         if (this.messageHistory.length > this.maxHistorySize) {
           this.messageHistory.length = this.maxHistorySize; // Truncate
+        }
+
+        // Record in statistics
+        if (this.statisticsManager) {
+          this.statisticsManager.recordMessage();
         }
 
         // Broadcast to WebSocket clients
@@ -500,7 +540,7 @@ class ApiServerV2 {
       }
 
       this.broadcast({ type: 'goal_reset', data: { current: 0 } });
-      this.sendSuccess(res, { current: 0, target: settings.goalTarget });
+      return this.sendSuccess(res, { current: 0, target: settings.goalTarget });
     }
 
     this.sendError(res, 405, 'Method not allowed');
@@ -575,7 +615,7 @@ class ApiServerV2 {
         .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
         .slice(0, limit);
 
-      this.sendSuccess(res, {
+      return this.sendSuccess(res, {
         events,
         total: events.length,
       });
@@ -631,6 +671,69 @@ class ApiServerV2 {
     this.sendError(res, 405, 'Method not allowed');
   }
 
+  handleStatistics(method, url, req, res) {
+    if (!this.statisticsManager) {
+      return this.sendError(res, 503, 'Statistics not available');
+    }
+
+    // Get all-time statistics
+    if (method === 'GET' && url === '/v2/statistics') {
+      const stats = this.statisticsManager.getAllTimeStats();
+      return this.sendSuccess(res, stats);
+    }
+
+    // Get top donators
+    if (method === 'GET' && url.startsWith('/v2/statistics/top')) {
+      const limit = parseInt(req.url.split('limit=')[1]) || 10;
+      const topDonators = this.statisticsManager.getTopDonators(Math.min(limit, 100));
+      return this.sendSuccess(res, {
+        top_donators: topDonators,
+        total: topDonators.length,
+      });
+    }
+
+    // Get recent sessions
+    if (method === 'GET' && url.startsWith('/v2/statistics/sessions')) {
+      const limit = parseInt(req.url.split('limit=')[1]) || 10;
+      const sessions = this.statisticsManager.getRecentSessions(Math.min(limit, 30));
+      return this.sendSuccess(res, {
+        sessions,
+        total: sessions.length,
+      });
+    }
+
+    // Export statistics
+    if (method === 'GET' && url === '/v2/statistics/export') {
+      const exportData = this.statisticsManager.export();
+      res.writeHead(200, {
+        'Content-Type': 'application/json',
+        'Content-Disposition': `attachment; filename="umbra-stats-${Date.now()}.json"`,
+      });
+      res.end(JSON.stringify(exportData, null, 2));
+      return;
+    }
+
+    // Import statistics
+    if (method === 'POST' && url === '/v2/statistics/import') {
+      return this.readBody(req, res, (data) => {
+        const success = this.statisticsManager.import(data);
+        if (success) {
+          this.sendSuccess(res, { imported: true });
+        } else {
+          this.sendError(res, 400, 'Import failed');
+        }
+      });
+    }
+
+    // Reset statistics
+    if (method === 'POST' && url === '/v2/statistics/reset') {
+      this.statisticsManager.reset();
+      return this.sendSuccess(res, { reset: true });
+    }
+
+    this.sendError(res, 405, 'Method not allowed');
+  }
+
   /**
    * Serve OBS pages from cache (optimized)
    */
@@ -658,6 +761,30 @@ class ApiServerV2 {
     } else {
       res.writeHead(404, { 'Content-Type': 'text/plain' });
       res.end('Page not found');
+    }
+  }
+
+  /**
+   * Serve web dashboard
+   */
+  serveWebDashboard(req, res) {
+    const dashboardPath = path.join(__dirname, '..', 'renderer', 'web', 'dashboard.html');
+    try {
+      if (fs.existsSync(dashboardPath)) {
+        const content = fs.readFileSync(dashboardPath, 'utf8');
+        res.writeHead(200, {
+          'Content-Type': 'text/html; charset=utf-8',
+          'Cache-Control': 'no-cache'
+        });
+        res.end(content);
+      } else {
+        res.writeHead(404, { 'Content-Type': 'text/plain' });
+        res.end('Dashboard not found');
+      }
+    } catch (error) {
+      console.error('Failed to serve dashboard:', error);
+      res.writeHead(500, { 'Content-Type': 'text/plain' });
+      res.end('Internal server error');
     }
   }
 
@@ -689,7 +816,20 @@ class ApiServerV2 {
 
     ws.on('message', (data) => {
       try {
+        // Validate message size
+        if (data.length > CONSTANTS.MAX_BODY_SIZE) {
+          ws.close(1009, 'Message too large');
+          return;
+        }
+
         const msg = JSON.parse(data);
+
+        // Validate message structure
+        if (!msg || typeof msg !== 'object') {
+          ws.send(JSON.stringify({ type: 'error', message: 'Invalid message format' }));
+          return;
+        }
+
         this.handleWebSocketMessage(ws, msg);
       } catch (e) {
         ws.send(JSON.stringify({ type: 'error', message: 'Invalid JSON' }));
@@ -804,10 +944,13 @@ class ApiServerV2 {
   readBody(req, res, callback) {
     let body = '';
     let size = 0;
+    let aborted = false;
 
     req.on('data', (chunk) => {
+      if (aborted) return;
       size += chunk.length;
       if (size > CONSTANTS.MAX_BODY_SIZE) {
+        aborted = true;
         this.sendError(res, 413, 'Payload too large');
         req.destroy();
         return;
@@ -816,6 +959,7 @@ class ApiServerV2 {
     });
 
     req.on('end', () => {
+      if (aborted) return;
       try {
         const data = body ? JSON.parse(body) : {};
         callback(data);
@@ -825,6 +969,8 @@ class ApiServerV2 {
     });
 
     req.on('error', () => {
+      if (aborted) return;
+      aborted = true;
       this.sendError(res, 400, 'Request error');
     });
   }

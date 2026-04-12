@@ -1,0 +1,53 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    name: Create Release
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Build application
+      run: npm run build:win
+      continue-on-error: true
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          dist/**/*
+        body: |
+          ## UMBRA ${{ github.ref_name }}
+
+          ### Установка
+          1. Скачайте архив для вашей ОС
+          2. Распакуйте
+          3. Запустите UMBRA.exe
+
+          ### Документация
+          - [README](https://github.com/NoxirDev/umbra/blob/main/README.md)
+          - [API Docs](https://github.com/NoxirDev/umbra/blob/main/API.md)
+          - [Changelog](https://github.com/NoxirDev/umbra/blob/main/docs/CHANGELOG.md)
+
+          ### Поддержка
+          - [Issues](https://github.com/NoxirDev/umbra/issues)
+          - [Discussions](https://github.com/NoxirDev/umbra/discussions)
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

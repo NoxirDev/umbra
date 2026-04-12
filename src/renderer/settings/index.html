@@ -124,6 +124,48 @@ input::placeholder{color:var(--text-m);}
 /* ── API KEY DISPLAY ── */
 .api-key-box{background:var(--void);border:1px solid var(--border);border-radius:3px;padding:10px 12px;font-family:monospace;font-size:12px;color:var(--api);word-break:break-all;letter-spacing:1px;}
 .copy-btn{margin-top:8px;}
+
+/* ── THEME PREVIEW ── */
+.theme-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-top:12px;}
+.theme-card{background:var(--void);border:2px solid var(--border);border-radius:6px;padding:12px;cursor:pointer;transition:all .3s;position:relative;}
+.theme-card:hover{border-color:var(--border-h);transform:translateY(-2px);}
+.theme-card.active{border-color:var(--glow);box-shadow:0 0 16px rgba(255,255,255,0.15);}
+.theme-card.active::after{content:'✓';position:absolute;top:8px;right:8px;width:24px;height:24px;background:var(--glow);color:var(--void);border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;}
+.theme-preview{width:100%;height:120px;border-radius:4px;overflow:hidden;display:flex;flex-direction:column;gap:6px;padding:8px;background:#0a0a0f;position:relative;}
+.theme-preview-goal{height:20px;background:rgba(255,255,255,0.05);border-radius:10px;overflow:hidden;}
+.theme-preview-goal-bar{height:100%;width:60%;border-radius:10px;transition:all .3s;}
+.theme-preview-msg{display:flex;align-items:center;gap:6px;padding:6px 8px;background:rgba(255,255,255,0.03);border-radius:4px;font-size:11px;}
+.theme-preview-badge{padding:2px 6px;border-radius:3px;font-weight:700;font-size:9px;}
+.theme-preview-text{color:#e4e4e7;font-size:10px;}
+.theme-preview-donation{padding:8px;background:rgba(255,255,255,0.05);border-radius:4px;text-align:center;font-size:12px;font-weight:600;}
+.theme-card-name{font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:1.5px;color:var(--glow);margin-top:10px;text-align:center;}
+.theme-card-desc{font-size:11px;color:var(--text-m);text-align:center;margin-top:2px;}
+
+/* Theme colors */
+.theme-default .theme-preview-goal-bar{background:linear-gradient(90deg,#00ff87,#60efff);}
+.theme-default .theme-preview-badge{background:#00ff87;color:#000;}
+.theme-default .theme-preview-donation{color:#00ff87;border:1px solid #00ff87;}
+
+.theme-cyberpunk .theme-preview-goal-bar{background:linear-gradient(90deg,#ff0055,#00ffff);}
+.theme-cyberpunk .theme-preview-badge{background:#ff0055;color:#fff;}
+.theme-cyberpunk .theme-preview-donation{color:#00ffff;border:1px solid #ff0055;}
+
+.theme-minimal .theme-preview-goal-bar{background:linear-gradient(90deg,#ffffff,#a8a8b3);}
+.theme-minimal .theme-preview-badge{background:#ffffff;color:#000;}
+.theme-minimal .theme-preview-donation{color:#ffffff;border:1px solid #ffffff;}
+
+.theme-neon .theme-preview-goal-bar{background:linear-gradient(90deg,#ff00ff,#00ffff,#ffff00);}
+.theme-neon .theme-preview-badge{background:#ff00ff;color:#fff;}
+.theme-neon .theme-preview-donation{color:#00ffff;border:1px solid #ff00ff;}
+
+.theme-dark .theme-preview-goal-bar{background:linear-gradient(90deg,#6366f1,#8b5cf6);}
+.theme-dark .theme-preview-badge{background:#6366f1;color:#fff;}
+.theme-dark .theme-preview-donation{color:#8b5cf6;border:1px solid #6366f1;}
+
+.theme-matrix .theme-preview-goal-bar{background:linear-gradient(90deg,#00ff00,#00cc00);}
+.theme-matrix .theme-preview-badge{background:#00ff00;color:#000;}
+.theme-matrix .theme-preview-donation{color:#00ff00;border:1px solid #00ff00;}
+
 </style>
 </head>
 <body>
@@ -380,17 +422,110 @@ input::placeholder{color:var(--text-m);}
 
       <div class="panel">
         <div class="panel-title">ВЫБОР ТЕМЫ</div>
-        <div class="field">
-          <label class="field-label">ТЕМА ОВЕРЛЕЯ</label>
-          <select id="theme-select" style="width:100%;background:var(--void);border:1px solid var(--border);border-radius:3px;padding:10px 12px;font-family:'Inter',sans-serif;font-size:13px;color:var(--text);">
-            <option value="default">Default (Зеленый)</option>
-            <option value="cyberpunk">Cyberpunk (Красный/Cyan)</option>
-            <option value="minimal">Minimal (Минимализм)</option>
-            <option value="neon">Neon (Яркий неон)</option>
-            <option value="dark">Dark (Темный)</option>
-            <option value="matrix">Matrix (Зеленая матрица)</option>
-          </select>
+        <div class="theme-grid">
+          <div class="theme-card" data-theme="default">
+            <div class="theme-preview theme-default">
+              <div class="theme-preview-goal">
+                <div class="theme-preview-goal-bar"></div>
+              </div>
+              <div class="theme-preview-msg">
+                <span class="theme-preview-badge">TW</span>
+                <span class="theme-preview-text">Sample message</span>
+              </div>
+              <div class="theme-preview-donation">
+                <span>💰 100 RUB</span>
+              </div>
+            </div>
+            <div class="theme-card-name">Default</div>
+            <div class="theme-card-desc">Зеленый классический</div>
+          </div>
+
+          <div class="theme-card" data-theme="cyberpunk">
+            <div class="theme-preview theme-cyberpunk">
+              <div class="theme-preview-goal">
+                <div class="theme-preview-goal-bar"></div>
+              </div>
+              <div class="theme-preview-msg">
+                <span class="theme-preview-badge">TW</span>
+                <span class="theme-preview-text">Sample message</span>
+              </div>
+              <div class="theme-preview-donation">
+                <span>💰 100 RUB</span>
+              </div>
+            </div>
+            <div class="theme-card-name">Cyberpunk</div>
+            <div class="theme-card-desc">Красный/Cyan</div>
+          </div>
+
+          <div class="theme-card" data-theme="minimal">
+            <div class="theme-preview theme-minimal">
+              <div class="theme-preview-goal">
+                <div class="theme-preview-goal-bar"></div>
+              </div>
+              <div class="theme-preview-msg">
+                <span class="theme-preview-badge">TW</span>
+                <span class="theme-preview-text">Sample message</span>
+              </div>
+              <div class="theme-preview-donation">
+                <span>💰 100 RUB</span>
+              </div>
+            </div>
+            <div class="theme-card-name">Minimal</div>
+            <div class="theme-card-desc">Минимализм</div>
+          </div>
+
+          <div class="theme-card" data-theme="neon">
+            <div class="theme-preview theme-neon">
+              <div class="theme-preview-goal">
+                <div class="theme-preview-goal-bar"></div>
+              </div>
+              <div class="theme-preview-msg">
+                <span class="theme-preview-badge">TW</span>
+                <span class="theme-preview-text">Sample message</span>
+              </div>
+              <div class="theme-preview-donation">
+                <span>💰 100 RUB</span>
+              </div>
+            </div>
+            <div class="theme-card-name">Neon</div>
+            <div class="theme-card-desc">Яркий неон</div>
+          </div>
+
+          <div class="theme-card" data-theme="dark">
+            <div class="theme-preview theme-dark">
+              <div class="theme-preview-goal">
+                <div class="theme-preview-goal-bar"></div>
+              </div>
+              <div class="theme-preview-msg">
+                <span class="theme-preview-badge">TW</span>
+                <span class="theme-preview-text">Sample message</span>
+              </div>
+              <div class="theme-preview-donation">
+                <span>💰 100 RUB</span>
+              </div>
+            </div>
+            <div class="theme-card-name">Dark</div>
+            <div class="theme-card-desc">Темный</div>
+          </div>
+
+          <div class="theme-card" data-theme="matrix">
+            <div class="theme-preview theme-matrix">
+              <div class="theme-preview-goal">
+                <div class="theme-preview-goal-bar"></div>
+              </div>
+              <div class="theme-preview-msg">
+                <span class="theme-preview-badge">TW</span>
+                <span class="theme-preview-text">Sample message</span>
+              </div>
+              <div class="theme-preview-donation">
+                <span>💰 100 RUB</span>
+              </div>
+            </div>
+            <div class="theme-card-name">Matrix</div>
+            <div class="theme-card-desc">Зеленая матрица</div>
+          </div>
         </div>
+        <input type="hidden" id="theme-select" value="default">
       </div>
 
       <div class="panel">
@@ -799,6 +934,12 @@ API.onReady((s) => {
   document.getElementById('obs-goal-url').value = `http://127.0.0.1:${port}/obs/goal.html?theme=${theme}`;
   // New settings
   if (s.theme)            document.getElementById('theme-select').value = s.theme || 'default';
+  // Activate theme card
+  if (s.theme) {
+    document.querySelectorAll('.theme-card').forEach(c => c.classList.remove('active'));
+    const activeCard = document.querySelector(`.theme-card[data-theme="${s.theme || 'default'}"]`);
+    if (activeCard) activeCard.classList.add('active');
+  }
   if (s.fontSize)         { document.getElementById('font-size').value = s.fontSize || 13; document.getElementById('font-size-val').textContent = (s.fontSize || 13) + 'px'; }
   if (s.animSpeed)        { document.getElementById('anim-speed').value = s.animSpeed || 5; document.getElementById('anim-speed-val').textContent = s.animSpeed || 5; }
   if (s.soundType)        document.getElementById('sound-type').value = s.soundType || 'default';
@@ -870,15 +1011,29 @@ function doSave() {
 }
 document.getElementById('save-btn').addEventListener('click', doSave);
 
-// ── UPDATE OBS URLS ON THEME CHANGE ──
-document.getElementById('theme-select').addEventListener('change', (e) => {
-  const port = document.getElementById('api-port').value || 4587;
-  const theme = e.target.value;
-  document.getElementById('obs-overlay-url').value = `http://127.0.0.1:${port}/obs/overlay.html?theme=${theme}`;
-  document.getElementById('obs-chat-url').value = `http://127.0.0.1:${port}/obs/chat.html?theme=${theme}`;
-  document.getElementById('obs-donations-url').value = `http://127.0.0.1:${port}/obs/donations.html?theme=${theme}`;
-  document.getElementById('obs-goal-url').value = `http://127.0.0.1:${port}/obs/goal.html?theme=${theme}`;
+// ── THEME PREVIEW CARDS ──
+document.querySelectorAll('.theme-card').forEach(card => {
+  card.addEventListener('click', () => {
+    const theme = card.dataset.theme;
+
+    // Update active state
+    document.querySelectorAll('.theme-card').forEach(c => c.classList.remove('active'));
+    card.classList.add('active');
+
+    // Update hidden input
+    document.getElementById('theme-select').value = theme;
+
+    // Update OBS URLs
+    const port = document.getElementById('api-port').value || 4587;
+    document.getElementById('obs-overlay-url').value = `http://127.0.0.1:${port}/obs/overlay.html?theme=${theme}`;
+    document.getElementById('obs-chat-url').value = `http://127.0.0.1:${port}/obs/chat.html?theme=${theme}`;
+    document.getElementById('obs-donations-url').value = `http://127.0.0.1:${port}/obs/donations.html?theme=${theme}`;
+    document.getElementById('obs-goal-url').value = `http://127.0.0.1:${port}/obs/goal.html?theme=${theme}`;
+  });
 });
+
+// ── UPDATE OBS URLS ON THEME CHANGE ──
+// (Handled by theme card click above)
 
 // ── TEST ──
 function doTestDonation() {

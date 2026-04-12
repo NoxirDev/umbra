@@ -9,6 +9,8 @@ const WindowManager = require('./windows');
 const TrayManager = require('./tray');
 const ApiServer = require('./api-v2');
 const IpcHandlers = require('./ipc-handlers');
+const StatisticsManager = require('./statistics');
+const NotificationManager = require('./notifications');
 
 // Single instance lock
 const gotLock = app.requestSingleInstanceLock();
@@ -41,8 +43,10 @@ const iconPathIco = path.join(__dirname, '..', '..', 'assets', 'icon.ico');
 
 // Initialize managers
 const settingsManager = new SettingsManager();
+const statisticsManager = new StatisticsManager();
+const notificationManager = new NotificationManager(iconPath);
 const windowManager = new WindowManager(iconPath, iconPathIco);
-const apiServer = new ApiServer(settingsManager, windowManager);
+const apiServer = new ApiServer(settingsManager, windowManager, statisticsManager, notificationManager);
 
 /**
  * Click-through state (shared between tray and IPC)
@@ -53,6 +57,7 @@ const clickThroughState = {
   set: (val) => { clickThroughState.enabled = val; },
   toggle: () => {
     clickThroughState.enabled = !clickThroughState.enabled;
+    ipcHandlers.clickThroughEnabled = clickThroughState.enabled;
     const overlay = windowManager.getOverlayWindow();
     if (clickThroughState.enabled) {
       overlay?.setIgnoreMouseEvents(true, { forward: true });

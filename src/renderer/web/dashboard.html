@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UMBRA Web Dashboard</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      color: #e4e4e7;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 40px;
+      padding: 30px 0;
+      border-bottom: 2px solid #2a2a3e;
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, #00ff87 0%, #60efff 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 10px;
+    }
+
+    .subtitle {
+      color: #a1a1aa;
+      font-size: 1rem;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+
+    .card {
+      background: rgba(42, 42, 62, 0.6);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 24px;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(0, 255, 135, 0.15);
+    }
+
+    .card-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin-bottom: 16px;
+      color: #00ff87;
+    }
+
+    .stat {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .stat:last-child {
+      border-bottom: none;
+    }
+
+    .stat-label {
+      color: #a1a1aa;
+      font-size: 0.9rem;
+    }
+
+    .stat-value {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #e4e4e7;
+    }
+
+    .goal-bar {
+      width: 100%;
+      height: 24px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 12px;
+      overflow: hidden;
+      margin-top: 12px;
+      position: relative;
+    }
+
+    .goal-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #00ff87 0%, #60efff 100%);
+      transition: width 0.5s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #000;
+    }
+
+    .btn {
+      background: linear-gradient(135deg, #00ff87 0%, #60efff 100%);
+      color: #000;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+      width: 100%;
+      margin-top: 12px;
+      font-size: 0.95rem;
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 255, 135, 0.4);
+    }
+
+    .btn:active {
+      transform: translateY(0);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.1);
+      color: #e4e4e7;
+    }
+
+    .input-group {
+      margin-bottom: 16px;
+    }
+
+    .input-group label {
+      display: block;
+      margin-bottom: 8px;
+      color: #a1a1aa;
+      font-size: 0.9rem;
+    }
+
+    .input-group input,
+    .input-group textarea {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      padding: 10px 14px;
+      color: #e4e4e7;
+      font-family: inherit;
+      font-size: 0.95rem;
+    }
+
+    .input-group input:focus,
+    .input-group textarea:focus {
+      outline: none;
+      border-color: #00ff87;
+      box-shadow: 0 0 0 3px rgba(0, 255, 135, 0.1);
+    }
+
+    .top-donators {
+      list-style: none;
+    }
+
+    .donator-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px;
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 8px;
+      margin-bottom: 8px;
+    }
+
+    .donator-rank {
+      width: 32px;
+      height: 32px;
+      background: linear-gradient(135deg, #00ff87 0%, #60efff 100%);
+      color: #000;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 0.9rem;
+    }
+
+    .donator-info {
+      flex: 1;
+      margin-left: 12px;
+    }
+
+    .donator-name {
+      font-weight: 600;
+      color: #e4e4e7;
+    }
+
+    .donator-count {
+      font-size: 0.85rem;
+      color: #a1a1aa;
+    }
+
+    .donator-amount {
+      font-weight: 700;
+      color: #00ff87;
+      font-size: 1.1rem;
+    }
+
+    .status-indicator {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-right: 8px;
+    }
+
+    .status-online {
+      background: #00ff87;
+      box-shadow: 0 0 8px #00ff87;
+    }
+
+    .status-offline {
+      background: #ef4444;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    .loading {
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>UMBRA Dashboard</h1>
+      <p class="subtitle">
+        <span class="status-indicator status-online"></span>
+        Web Interface v2.1.1
+      </p>
+    </header>
+
+    <div class="grid">
+      <!-- Goal Card -->
+      <div class="card">
+        <div class="card-title">🎯 Цель сбора</div>
+        <div class="stat">
+          <span class="stat-label" id="goal-title">DONATION GOAL</span>
+          <span class="stat-value" id="goal-amount">0 / 0</span>
+        </div>
+        <div class="goal-bar">
+          <div class="goal-fill" id="goal-fill" style="width: 0%">0%</div>
+        </div>
+      </div>
+
+      <!-- Session Stats -->
+      <div class="card">
+        <div class="card-title">📊 Статистика сессии</div>
+        <div class="stat">
+          <span class="stat-label">Всего донатов</span>
+          <span class="stat-value" id="session-donations">0</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Сумма донатов</span>
+          <span class="stat-value" id="session-amount">0 ₽</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Сообщений</span>
+          <span class="stat-value" id="session-messages">0</span>
+        </div>
+      </div>
+
+      <!-- All-Time Stats -->
+      <div class="card">
+        <div class="card-title">🏆 За всё время</div>
+        <div class="stat">
+          <span class="stat-label">Всего донатов</span>
+          <span class="stat-value" id="alltime-donations">0</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Общая сумма</span>
+          <span class="stat-value" id="alltime-amount">0 ₽</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Средний донат</span>
+          <span class="stat-value" id="alltime-average">0 ₽</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Top Donators -->
+    <div class="card">
+      <div class="card-title">👑 Топ донатеров</div>
+      <ul class="top-donators" id="top-donators">
+        <li class="loading">Загрузка...</li>
+      </ul>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="grid" style="margin-top: 30px;">
+      <div class="card">
+        <div class="card-title">⚡ Быстрые действия</div>
+        <button class="btn" onclick="testDonation()">Тестовый донат</button>
+        <button class="btn btn-secondary" onclick="clearChat()">Очистить чат</button>
+        <button class="btn btn-secondary" onclick="refreshStats()">Обновить статистику</button>
+      </div>
+
+      <div class="card">
+        <div class="card-title">💬 Отправить сообщение</div>
+        <div class="input-group">
+          <label>Имя</label>
+          <input type="text" id="msg-author" placeholder="Anonymous" value="Web User">
+        </div>
+        <div class="input-group">
+          <label>Сообщение</label>
+          <textarea id="msg-text" rows="3" placeholder="Привет!"></textarea>
+        </div>
+        <button class="btn" onclick="sendMessage()">Отправить</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = 'http://127.0.0.1:4587';
+    let ws = null;
+
+    // Connect to WebSocket
+    function connectWebSocket() {
+      ws = new WebSocket(`ws://127.0.0.1:4587`);
+
+      ws.onopen = () => {
+        console.log('WebSocket connected');
+      };
+
+      ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        if (data.type === 'donation') {
+          refreshStats();
+        }
+      };
+
+      ws.onerror = (error) => {
+        console.error('WebSocket error:', error);
+      };
+
+      ws.onclose = () => {
+        console.log('WebSocket disconnected, reconnecting...');
+        setTimeout(connectWebSocket, 3000);
+      };
+    }
+
+    // Fetch stats
+    async function fetchStats() {
+      try {
+        const [statsRes, goalRes, topRes] = await Promise.all([
+          fetch(`${API_BASE}/v2/statistics`),
+          fetch(`${API_BASE}/v2/goal`),
+          fetch(`${API_BASE}/v2/statistics/top?limit=10`)
+        ]);
+
+        const stats = await statsRes.json();
+        const goal = await goalRes.json();
+        const top = await topRes.json();
+
+        updateGoal(goal.data);
+        updateStats(stats.data);
+        updateTopDonators(top.data.top_donators);
+      } catch (error) {
+        console.error('Failed to fetch stats:', error);
+      }
+    }
+
+    function updateGoal(goal) {
+      document.getElementById('goal-title').textContent = goal.title || 'DONATION GOAL';
+      document.getElementById('goal-amount').textContent = `${goal.current} / ${goal.target}`;
+      const percent = goal.percentage || 0;
+      const fill = document.getElementById('goal-fill');
+      fill.style.width = `${Math.min(100, percent)}%`;
+      fill.textContent = `${parseFloat(percent).toFixed(1)}%`;
+    }
+
+    function updateStats(stats) {
+      // Session stats (from history)
+      fetch(`${API_BASE}/v2/stats`).then(r => r.json()).then(data => {
+        const session = data.data.session;
+        document.getElementById('session-donations').textContent = data.data.history.donations;
+        document.getElementById('session-amount').textContent = `${session.total_donations.toFixed(2)} ₽`;
+        document.getElementById('session-messages').textContent = session.total_messages;
+      });
+
+      // All-time stats
+      document.getElementById('alltime-donations').textContent = stats.totalDonations;
+      document.getElementById('alltime-amount').textContent = `${stats.totalAmount.toFixed(2)} ₽`;
+      document.getElementById('alltime-average').textContent = `${stats.averageDonation} ₽`;
+    }
+
+    function updateTopDonators(donators) {
+      const list = document.getElementById('top-donators');
+      if (!donators || donators.length === 0) {
+        list.innerHTML = '<li style="text-align: center; color: #a1a1aa;">Пока нет донатов</li>';
+        return;
+      }
+
+      list.innerHTML = donators.map((d, i) => `
+        <li class="donator-item">
+          <div class="donator-rank">${i + 1}</div>
+          <div class="donator-info">
+            <div class="donator-name">${d.name}</div>
+            <div class="donator-count">${d.count} донат${d.count > 1 ? 'ов' : ''}</div>
+          </div>
+          <div class="donator-amount">${d.amount.toFixed(2)} ₽</div>
+        </li>
+      `).join('');
+    }
+
+    async function testDonation() {
+      try {
+        await fetch(`${API_BASE}/v2/donations`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: 'Web User',
+            amount: '100',
+            message: 'Тестовый донат из веб-интерфейса!',
+            currency: 'RUB'
+          })
+        });
+        alert('Тестовый донат отправлен!');
+        refreshStats();
+      } catch (error) {
+        alert('Ошибка: ' + error.message);
+      }
+    }
+
+    async function sendMessage() {
+      const author = document.getElementById('msg-author').value || 'Anonymous';
+      const text = document.getElementById('msg-text').value;
+
+      if (!text.trim()) {
+        alert('Введите сообщение');
+        return;
+      }
+
+      try {
+        await fetch(`${API_BASE}/v2/messages`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ author, text, platform: 'web' })
+        });
+        document.getElementById('msg-text').value = '';
+        alert('Сообщение отправлено!');
+      } catch (error) {
+        alert('Ошибка: ' + error.message);
+      }
+    }
+
+    async function clearChat() {
+      if (!confirm('Очистить чат?')) return;
+      try {
+        await fetch(`${API_BASE}/v2/chat`, { method: 'DELETE' });
+        alert('Чат очищен!');
+      } catch (error) {
+        alert('Ошибка: ' + error.message);
+      }
+    }
+
+    function refreshStats() {
+      fetchStats();
+    }
+
+    // Initialize
+    connectWebSocket();
+    fetchStats();
+    setInterval(fetchStats, 10000); // Refresh every 10 seconds
+  </script>
+</body>
+</html>

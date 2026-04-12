@@ -1,13 +1,16 @@
 {
   "name": "umbra",
-  "version": "2.1.0",
-  "description": "UMBRA — Stream Overlay by Noxir",
+  "version": "2.1.1",
+  "description": "UMBRA — Stream Overlay by Noxir (v2.1.1 with Twitch Integration, Statistics & Notifications)",
   "main": "src/main/index.js",
   "scripts": {
     "start": "electron .",
     "dev": "electron . --inspect",
     "build": "electron-builder",
-    "build:win": "electron-builder --win"
+    "build:win": "electron-builder --win",
+    "build:nsis": "electron-builder --win nsis",
+    "build:portable": "electron-builder --win portable",
+    "build:all": "electron-builder --win nsis portable"
   },
   "author": "Noxir",
   "license": "MIT",
@@ -21,22 +24,63 @@
   "build": {
     "appId": "com.noxir.umbra",
     "productName": "UMBRA",
+    "copyright": "Copyright © 2026 Noxir (KayROSir)",
     "directories": {
-      "output": "dist"
+      "output": "dist",
+      "buildResources": "assets"
     },
     "files": [
       "src/**/*",
-      "package.json"
+      "assets/**/*",
+      "package.json",
+      "LICENSE"
     ],
     "win": {
       "target": [
         {
-          "target": "dir",
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
           "arch": [
             "x64"
           ]
         }
-      ]
+      ],
+      "icon": "assets/icon.ico",
+      "artifactName": "${productName}-${version}-${arch}.${ext}",
+      "publisherName": "Noxir",
+      "verifyUpdateCodeSignature": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "allowElevation": true,
+      "installerIcon": "assets/icon.ico",
+      "uninstallerIcon": "assets/icon.ico",
+      "installerHeaderIcon": "assets/icon.ico",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "UMBRA",
+      "perMachine": false,
+      "runAfterFinish": true,
+      "deleteAppDataOnUninstall": false,
+      "license": "LICENSE",
+      "artifactName": "${productName}-Setup-${version}.${ext}",
+      "installerLanguages": [
+        "en_US",
+        "ru_RU"
+      ],
+      "language": "1049"
+    },
+    "portable": {
+      "artifactName": "${productName}-${version}-Portable.${ext}"
+    },
+    "extraMetadata": {
+      "main": "src/main/index.js"
     }
   }
 }

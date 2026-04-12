@@ -83,6 +83,7 @@ class IpcHandlers {
     // Click-through
     ipcMain.on('toggle-click-through', (_e, enabled) => {
       this.clickThroughEnabled = !!enabled;
+      this.trayManager?.clickThroughState?.set(this.clickThroughEnabled);
       const overlay = this.windowManager.getOverlayWindow();
       if (this.clickThroughEnabled) {
         overlay?.setIgnoreMouseEvents(true, { forward: true });
@@ -91,6 +92,7 @@ class IpcHandlers {
         overlay?.setIgnoreMouseEvents(false);
         this.stopCtPolling();
       }
+      this.trayManager?.updateMenu();
     });
 
     // UI bounds for click-through
@@ -277,6 +279,7 @@ class IpcHandlers {
 
     reg(hotkeys.clickThrough, () => {
       this.clickThroughEnabled = !this.clickThroughEnabled;
+      this.trayManager?.clickThroughState?.set(this.clickThroughEnabled);
       const overlay = this.windowManager.getOverlayWindow();
       if (this.clickThroughEnabled) {
         overlay?.setIgnoreMouseEvents(true, { forward: true });

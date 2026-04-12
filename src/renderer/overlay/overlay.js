@@ -312,7 +312,13 @@
 
   // Reconnect all services
   function reconnectAll() {
-    window.TwitchService.connect(settings.twitchChannel);
+    // Use enhanced Twitch service if available
+    if (window.TwitchEnhanced) {
+      window.TwitchEnhanced.connect(settings.twitchChannel);
+    } else {
+      window.TwitchService.connect(settings.twitchChannel);
+    }
+
     window.DonationAlertsService.connect(settings.daToken);
     window.KickService.connect(settings.kickChannel);
     window.YouTubeService.connect(settings.youtubeVideoId, settings.youtubeApiKey);

@@ -1,0 +1,121 @@
+name: Feature Request
+description: Предложить новую функцию для UMBRA
+title: "[Feature]: "
+labels: ["enhancement", "triage"]
+assignees:
+  - NoxirDev
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Спасибо за предложение! Мы ценим ваши идеи по улучшению UMBRA.
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Предварительная проверка
+      options:
+        - label: Я проверил [существующие issues](https://github.com/NoxirDev/umbra/issues) и не нашёл похожих предложений
+          required: true
+        - label: Я прочитал [roadmap](https://github.com/NoxirDev/umbra/blob/main/docs/CHANGELOG.md) и этой функции там нет
+          required: true
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Категория
+      description: К какой области относится ваше предложение?
+      options:
+        - Интеграции (Twitch, YouTube, и т.д.)
+        - UI/UX (дизайн, темы)
+        - API (новые endpoints)
+        - Производительность
+        - Безопасность
+        - Документация
+        - Другое
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Проблема
+      description: Какую проблему решает эта функция?
+      placeholder: |
+        Опишите проблему или неудобство, которое вы испытываете...
+        Например: "Мне неудобно переключаться между темами, потому что..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Предлагаемое решение
+      description: Как вы видите реализацию этой функции?
+      placeholder: |
+        Опишите, как должна работать новая функция...
+        Например: "Добавить кнопку быстрого переключения тем в трее..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Альтернативы
+      description: Рассматривали ли вы другие решения?
+      placeholder: |
+        Опишите альтернативные подходы, которые вы рассматривали...
+
+  - type: textarea
+    id: mockup
+    attributes:
+      label: Mockup / Скриншоты
+      description: Если у вас есть визуальное представление - добавьте его
+      placeholder: Перетащите изображения сюда...
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Приоритет
+      description: Насколько важна эта функция для вас?
+      options:
+        - Критическая (без неё не могу использовать UMBRA)
+        - Высокая (очень нужна)
+        - Средняя (было бы удобно)
+        - Низкая (nice to have)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: willing
+    attributes:
+      label: Готовность помочь
+      description: Готовы ли вы помочь с реализацией?
+      options:
+        - Да, я могу реализовать это сам
+        - Да, я могу помочь с тестированием
+        - Да, я могу помочь с документацией
+        - Нет, но я могу предоставить больше деталей
+        - Нет
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Дополнительная информация
+      description: Любая другая информация о предложении
+      placeholder: |
+        - Примеры из других приложений
+        - Ссылки на похожие решения
+        - Технические детали
+        - И т.д.
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Согласие
+      options:
+        - label: Я согласен следовать [Code of Conduct](https://github.com/NoxirDev/umbra/blob/main/docs/CONTRIBUTING.md)
+          required: true

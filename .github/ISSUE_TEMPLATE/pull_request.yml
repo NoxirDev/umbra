@@ -1,0 +1,117 @@
+name: Pull Request
+description: Предложить изменения в UMBRA
+title: "[PR]: "
+labels: ["pull-request"]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Спасибо за вклад в UMBRA! Пожалуйста, заполните информацию ниже.
+
+  - type: dropdown
+    id: type
+    attributes:
+      label: Тип изменений
+      description: Какой тип изменений вы вносите?
+      options:
+        - feat (новая функция)
+        - fix (исправление бага)
+        - docs (документация)
+        - style (форматирование кода)
+        - refactor (рефакторинг)
+        - perf (оптимизация производительности)
+        - test (тесты)
+        - chore (обновление зависимостей, и т.д.)
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Описание изменений
+      description: Что делает этот PR?
+      placeholder: |
+        Подробно опишите, что вы изменили и почему...
+    validations:
+      required: true
+
+  - type: textarea
+    id: changes
+    attributes:
+      label: Список изменений
+      description: Перечислите конкретные изменения
+      placeholder: |
+        - Добавлен новый модуль X
+        - Исправлена ошибка в Y
+        - Обновлена документация Z
+    validations:
+      required: true
+
+  - type: input
+    id: issue
+    attributes:
+      label: Связанный Issue
+      description: Укажите номер issue, если есть
+      placeholder: "#123"
+
+  - type: dropdown
+    id: breaking
+    attributes:
+      label: Breaking Changes
+      description: Есть ли несовместимые изменения?
+      options:
+        - Нет
+        - Да (опишите в дополнительной информации)
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: testing
+    attributes:
+      label: Тестирование
+      description: Как вы тестировали изменения?
+      options:
+        - label: Протестировано вручную
+        - label: Добавлены unit тесты
+        - label: Проверено на Windows 11
+        - label: Проверено на Windows 10
+        - label: Проверены все основные функции
+        - label: Нет регрессий
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Чеклист
+      description: Убедитесь, что вы выполнили все пункты
+      options:
+        - label: Код соответствует [стилю проекта](https://github.com/NoxirDev/umbra/blob/main/docs/CONTRIBUTING.md)
+          required: true
+        - label: Добавлены комментарии для сложной логики
+          required: true
+        - label: Обновлена документация (если нужно)
+          required: true
+        - label: Нет конфликтов с main веткой
+          required: true
+        - label: Коммиты имеют понятные сообщения
+          required: true
+        - label: Я прочитал [CONTRIBUTING.md](https://github.com/NoxirDev/umbra/blob/main/docs/CONTRIBUTING.md)
+          required: true
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Скриншоты / Видео
+      description: Добавьте визуальные материалы, если применимо
+      placeholder: Перетащите изображения или видео сюда...
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Дополнительная информация
+      description: Любая другая информация о PR
+      placeholder: |
+        - Зависимости
+        - Известные ограничения
+        - Планы на будущее
+        - И т.д.

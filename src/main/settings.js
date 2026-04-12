@@ -177,6 +177,12 @@ class SettingsManager {
       animSpeed: Math.min(10, Math.max(1, safeInt(s.animSpeed, 5))),
       saveHistory: s.saveHistory === true,
 
+      // Notifications
+      notifyDonations: s.notifyDonations !== false, // Enabled by default
+      notifyGoals: s.notifyGoals !== false,
+      notifyMilestones: s.notifyMilestones !== false,
+      minDonationAmount: Math.max(0, safeInt(s.minDonationAmount, 0)),
+
       // Hotkeys
       hotkeys: {
         clickThrough: safeKey(hk.clickThrough),

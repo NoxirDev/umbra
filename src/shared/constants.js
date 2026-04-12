@@ -1,7 +1,7 @@
 // UMBRA Constants
 module.exports = {
   APP_NAME: 'UMBRA',
-  APP_VERSION: '2.1.0',
+  APP_VERSION: '2.1.1',
   AUTHOR: 'Noxir (KayROSir)',
 
   // Window sizes
@@ -40,7 +40,7 @@ module.exports = {
   SOUND_VOLUME_DEFAULT: 50,
 
   // Themes
-  THEMES: ['default', 'minimal', 'neon', 'dark', 'matrix'],
+  THEMES: ['default', 'cyberpunk', 'minimal', 'neon', 'dark', 'matrix'],
   SOUND_TYPES: ['default', 'bell', 'coin', 'fanfare', 'custom'],
 
   // WebSocket URLs
