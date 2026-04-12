@@ -7,7 +7,7 @@
 ![Electron](https://img.shields.io/badge/Electron-33.0.0-47848F?style=for-the-badge&logo=electron)
 ![Node](https://img.shields.io/badge/Node.js-Latest-339933?style=for-the-badge&logo=node.js)
 
-**Professional Stream Overlay for Twitch, YouTube, Kick**
+**Professional Stream Overlay for Twitch**
 
 Мощный и оптимизированный оверлей для стримеров с поддержкой донатов, чата и интеграций.
 
@@ -28,8 +28,6 @@
 
 ### 🔌 Интеграции
 - 💜 **Twitch** - расширенная интеграция с badges, emotes (BTTV/FFZ/7TV), событиями (subs, bits, raids)
-- 🔴 **YouTube** - live chat
-- 🟢 **Kick** - чат и донаты
 - 💰 **DonationAlerts** - донаты и алерты
 - 💸 **DonatePay** - донаты
 
