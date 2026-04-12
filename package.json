@@ -74,13 +74,33 @@
         "en_US",
         "ru_RU"
       ],
-      "language": "1049"
+      "language": "1049",
+      "menuCategory": true,
+      "multiLanguageInstaller": true,
+      "displayLanguageSelector": true
     },
     "portable": {
-      "artifactName": "${productName}-${version}-Portable.${ext}"
+      "artifactName": "${productName}-${version}-Portable.${ext}",
+      "requestExecutionLevel": "user"
     },
     "extraMetadata": {
       "main": "src/main/index.js"
-    }
+    },
+    "publish": {
+      "provider": "github",
+      "releaseType": "release"
+    },
+    "protocols": {
+      "name": "umbra",
+      "schemes": ["umbra"]
+    },
+    "fileAssociations": [
+      {
+        "ext": "umbra",
+        "name": "UMBRA Project",
+        "description": "UMBRA Overlay Project File",
+        "role": "Editor"
+      }
+    ]
   }
 }
