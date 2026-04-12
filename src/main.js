@@ -239,7 +239,7 @@ function startApiServer(port, apiKey) {
 
       // POST /v1/message
       if (url === '/v1/message') {
-        const platform = ['twitch','youtube','kick','da','dx'].includes(data.platform) ? data.platform : 'api';
+        const platform = ['twitch','youtube','kick','da'].includes(data.platform) ? data.platform : 'api';
         const author   = String(data.author || 'anonymous').slice(0, 100);
         const text     = String(data.text   || '').slice(0, 1000);
         const color    = /^#[0-9a-fA-F]{6}$/.test(data.color) ? data.color : '#a8a8b3';

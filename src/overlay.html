@@ -479,8 +479,6 @@ function daConnect(){
   if(ws){const prev=ws.onclose;ws.onclose=()=>{clearInterval(ping);auth=false;if(prev)prev();};}
 }
 
-// DONATEX - REMOVED (DonatePay integration removed)
-
 // KICK
 const kickService=createService('kick',()=>kickConnect());
 function kickConnect(){
