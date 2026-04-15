@@ -46,7 +46,16 @@
 - 🎯 Оптимизированный рендеринг с requestAnimationFrame
 - 💾 Pre-caching OBS страниц для мгновенной отдачи
 
-### 🆕 Новое в v2.1.1
+### 🛠️ Профессиональный установщик
+- 📦 **Множество форматов**: NSIS, Portable, Inno Setup, AppX/MSIX
+- 🖼️ **Кастомная графика** (welcome, header, sidebar) для установщика
+- 🔐 **Подпись кода** с самоподписанным сертификатом (можно заменить на доверенный)
+- 🏗️ **Кастомный NSIS скрипт** с проверкой системных требований
+- 🔄 **Автоматические обновления** через electron-updater (готово к интеграции)
+- 🚀 **CI/CD пайплайн** (GitHub Actions) для автоматических релизов
+- 📄 **Генерация .appinstaller** для установки через Microsoft Store
+
+### � Новое в v2.1.1
 - 📊 **Расширенная статистика** - топ донатеров, история сессий
 - 🔔 **Desktop уведомления** - донаты, достижение целей
 - 📱 **Web Dashboard** - управление через браузер (http://127.0.0.1:4587)
@@ -58,6 +67,7 @@
 - 🔔 Работа в системном трее
 - 💾 Backup/restore настроек
 - 🎛️ Модульная архитектура (34 файла, 8000+ строк)
+- 🧪 **Unit-тесты** для критических модулей (statistics, utils)
 
 ---
 
@@ -87,9 +97,28 @@ npm start
 # Dev режим с инспектором
 npm run dev
 
-# Сборка (требует admin права на Windows)
-npm run build:win
+# Сборка установщиков (требует admin права на Windows)
+npm run build:win          # NSIS установщик
+npm run build:portable     # Portable версия
+npm run build:appx         # AppX пакет для Microsoft Store
+npm run build:all          # Все форматы
+
+# Генерация сертификата подписи (требуется PowerShell)
+npm run cert:create
+
+# Генерация .appinstaller файла
+npm run generate:appinstaller
 ```
+
+### Установка для конечных пользователей
+1. Скачайте последний релиз с [GitHub Releases](https://github.com/NoxirDev/umbra/releases)
+2. Выберите нужный формат:
+   - **UMBRA Setup.exe** – стандартный установщик с графическим интерфейсом
+   - **UMBRA Portable.exe** – портативная версия без установки
+   - **UMBRA.appinstaller** – установка через Microsoft Store (требуется Windows 10/11)
+3. Запустите установщик и следуйте инструкциям.
+
+**Примечание:** Установщик подписан самоподписанным сертификатом. При первом запуске Windows может предупредить о неизвестном издателе. Для доверенной установки рекомендуется использовать сертификат от доверенного центра сертификации.
 
 ---
 
@@ -170,6 +199,7 @@ ws.onmessage = (event) => {
 - [Архитектура](docs/ARCHITECTURE.md)
 - [Руководство для контрибьюторов](docs/CONTRIBUTING.md)
 - [История изменений](docs/CHANGELOG.md)
+- [Руководство по установщику](docs/INSTALLER_GUIDE.md) 📦
 
 ---
 
@@ -193,8 +223,12 @@ UMBRA/
 │   │   ├── constants.js
 │   │   └── utils.js
 │   └── preload/                # Preload scripts
-├── assets/                     # Icons and resources
+├── assets/                     # Icons and resources (включая графику для установщика)
+├── certs/                      # Сертификаты для подписи кода
+├── scripts/                    # Вспомогательные скрипты (генерация .appinstaller)
+├── tests/                      # Unit-тесты
 ├── examples/                   # API usage examples
+├── docs/                       # Документация
 ├── API.md                      # API documentation
 ├── OPTIMIZATIONS.md            # Performance report
 └── package.json
@@ -223,6 +257,7 @@ UMBRA/
 - 📝 Улучшение документации
 - 🐛 Исправление багов
 - ⚡ Оптимизация производительности
+- 📦 Улучшение установщика (новые форматы, автоматизация)
 
 ### Guidelines
 
@@ -241,6 +276,21 @@ UMBRA/
 ---
 
 ## 📋 Changelog
+
+### v2.1.1 (2026-04-14) - Installer Improvements
+
+**Улучшения установщика:**
+- 🖼️ Добавлены графические ресурсы для установщика (welcome.bmp, header.bmp, sidebar.bmp)
+- 🔐 Обновлена конфигурация подписи кода (исправлены невалидные свойства)
+- 🏗️ Создан кастомный NSIS скрипт с проверкой системных требований
+- 🚀 Настроен CI/CD пайплайн (GitHub Actions) для автоматических релизов
+- 🔄 Интегрирована поддержка автоматических обновлений через electron-updater
+- 📦 Добавлены скрипты генерации сертификатов и .appinstaller файлов
+
+**Исправления:**
+- 🐛 Исправлена утечка таймеров в StatisticsManager (добавлен cleanup)
+- 🧪 Обновлены unit-тесты с fake timers для предотвращения утечек
+- 📝 Обновлена документация по установщику (docs/INSTALLER_GUIDE.md)
 
 ### v2.1.1 (2026-04-11) - Performance & Features Update
 
