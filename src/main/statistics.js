@@ -2,12 +2,15 @@
 const fs = require('fs');
 const path = require('path');
 const { app } = require('electron');
+const CONSTANTS = require('../shared/constants');
 
 class StatisticsManager {
   constructor() {
     this.statsPath = path.join(app.getPath('userData'), 'statistics.json');
     this.stats = this.load();
     this.sessionStart = Date.now();
+    this._saveTimer = null;
+    this._dirty = false;
   }
 
   /**
@@ -31,11 +34,36 @@ class StatisticsManager {
   save() {
     try {
       const data = JSON.stringify(this.stats, null, 2);
-      fs.writeFileSync(this.statsPath, data, 'utf8');
+      const tempPath = this.statsPath + '.tmp';
+      fs.writeFileSync(tempPath, data, 'utf8');
+      fs.renameSync(tempPath, this.statsPath);
       return true;
     } catch (error) {
       console.error('[Statistics] Failed to save:', error.message);
       return false;
+    }
+  }
+
+  _scheduleSave() {
+    this._dirty = true;
+    if (this._saveTimer) return;
+    this._saveTimer = setTimeout(() => {
+      this._saveTimer = null;
+      if (this._dirty) {
+        this._dirty = false;
+        this.save();
+      }
+    }, 5000);
+  }
+
+  _flushSave() {
+    if (this._saveTimer) {
+      clearTimeout(this._saveTimer);
+      this._saveTimer = null;
+    }
+    if (this._dirty) {
+      this._dirty = false;
+      this.save();
     }
   }
 
@@ -76,15 +104,12 @@ class StatisticsManager {
     // Update top donators
     this.updateTopDonators(name, amount, donation.timestamp);
 
-    this.save();
+    this._scheduleSave();
   }
 
-  /**
-   * Record a message
-   */
   recordMessage() {
     this.stats.allTime.totalMessages++;
-    this.save();
+    this._scheduleSave();
   }
 
   /**
@@ -134,6 +159,26 @@ class StatisticsManager {
     };
   }
 
+  getStats() {
+    const allTime = this.getAllTimeStats();
+    const session = {
+      total_donations: allTime.totalDonations,
+      total_amount: allTime.totalAmount,
+      total_messages: allTime.totalMessages,
+      average_donation: allTime.averageDonation,
+    };
+    return {
+      allTime,
+      session,
+      history: {
+        donations: this.donationHistory?.length || 0,
+        messages: this.messageHistory?.length || 0,
+      },
+      topDonators: this.getTopDonators(10),
+      recentSessions: this.getRecentSessions(5),
+    };
+  }
+
   /**
    * Start new session
    */
@@ -172,9 +217,6 @@ class StatisticsManager {
     return this.stats.sessions.slice(0, limit);
   }
 
-  /**
-   * Reset all statistics
-   */
   reset() {
     this.stats = this.getDefaults();
     this.save();
@@ -187,7 +229,7 @@ class StatisticsManager {
     return {
       ...this.stats,
       exportDate: new Date().toISOString(),
-      version: '2.1.1',
+      version: CONSTANTS.APP_VERSION,
     };
   }
 
@@ -196,14 +238,53 @@ class StatisticsManager {
    */
   import(data) {
     try {
-      if (data.allTime) this.stats.allTime = data.allTime;
-      if (data.sessions) this.stats.sessions = data.sessions;
+      if (data.allTime) {
+        const a = data.allTime;
+        this.stats.allTime = {
+          totalDonations: Math.max(0, parseInt(a.totalDonations) || 0),
+          totalAmount: Math.max(0, parseFloat(a.totalAmount) || 0),
+          totalMessages: Math.max(0, parseInt(a.totalMessages) || 0),
+          topDonators: Array.isArray(a.topDonators)
+            ? a.topDonators.slice(0, 100).map(d => ({
+                name: String(d.name || '').slice(0, 50),
+                amount: Math.max(0, parseFloat(d.amount) || 0),
+                count: Math.max(0, parseInt(d.count) || 0),
+                lastDonation: d.lastDonation || null,
+              }))
+            : [],
+          firstDonation: a.firstDonation || null,
+          lastDonation: a.lastDonation || null,
+        };
+      }
+      if (data.sessions) {
+        this.stats.sessions = Array.isArray(data.sessions)
+          ? data.sessions.slice(0, 30).map(s => ({
+              start: parseInt(s.start) || 0,
+              end: parseInt(s.end) || 0,
+              duration: Math.max(0, parseInt(s.duration) || 0),
+              donations: Math.max(0, parseInt(s.donations) || 0),
+              amount: Math.max(0, parseFloat(s.amount) || 0),
+              messages: Math.max(0, parseInt(s.messages) || 0),
+            }))
+          : [];
+      }
       this.save();
       return true;
     } catch (error) {
       console.error('[Statistics] Import failed:', error.message);
       return false;
     }
+  }
+
+  /**
+   * Cleanup resources (stop timers)
+   */
+  cleanup() {
+    if (this._saveTimer) {
+      clearTimeout(this._saveTimer);
+      this._saveTimer = null;
+    }
+    this._flushSave();
   }
 }
 

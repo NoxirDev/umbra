@@ -4,10 +4,14 @@
 
   // Global error handlers
   window.addEventListener('error', (e) => {
-    console.error('[Overlay] error:', e.error || e.message);
+    const msg = e.error?.stack || e.message || 'Unknown error';
+    console.error('[Overlay] error:', msg);
+    API.reportError?.(msg);
   });
   window.addEventListener('unhandledrejection', (e) => {
-    console.error('[Overlay] promise rejection:', e.reason);
+    const msg = e.reason?.stack || e.reason || 'Unhandled rejection';
+    console.error('[Overlay] promise rejection:', msg);
+    API.reportError?.(msg);
   });
 
   // API bridge
@@ -37,8 +41,8 @@
   let comboSum = 0;
   let comboTimer = null;
   let comboCount = 0;
-  let comboPending = null;
-  const COMBO_TIMEOUT = 5000; // 5 seconds
+  let comboEntries = [];
+  const COMBO_TIMEOUT = 5000;
 
   // Initialize
   document.addEventListener('DOMContentLoaded', () => {
@@ -293,32 +297,28 @@
     window.GoalUI.addToGoal(safe);
     comboSum += safe;
     comboCount++;
-    comboPending = { name: name || 'anonymous', amount: safe, msg: message || '', platform: platform || 'da' };
+    comboEntries.push({ name: name || 'anonymous', amount: safe, msg: message || '', platform: platform || 'da' });
 
     if (comboTimer) clearTimeout(comboTimer);
     comboTimer = setTimeout(() => {
       if (comboCount === 1) {
-        window.DonationsUI.showDonation(comboPending.name, String(comboPending.amount), comboPending.msg, comboPending.platform);
+        const e = comboEntries[0];
+        window.DonationsUI.showDonation(e.name, String(e.amount), e.msg, e.platform);
       } else {
-        window.DonationsUI.showDonation('COMBO x' + comboCount, String(comboSum), '🔥 DONATION COMBO', comboPending.platform);
+        const platforms = [...new Set(comboEntries.map(e => e.platform))];
+        const last = comboEntries[comboEntries.length - 1];
+        window.DonationsUI.showDonation('COMBO x' + comboCount, String(comboSum), '🔥 DONATION COMBO', platforms[0] || last.platform);
       }
-      // Reset combo state
       comboSum = 0;
       comboCount = 0;
-      comboPending = null;
+      comboEntries = [];
       comboTimer = null;
     }, COMBO_TIMEOUT);
   }
 
   // Reconnect all services
   function reconnectAll() {
-    // Use enhanced Twitch service if available
-    if (window.TwitchEnhanced) {
-      window.TwitchEnhanced.connect(settings.twitchChannel);
-    } else {
-      window.TwitchService.connect(settings.twitchChannel);
-    }
-
+    window.TwitchService.connect(settings.twitchChannel);
     window.DonationAlertsService.connect(settings.daToken);
     window.KickService.connect(settings.kickChannel);
     window.YouTubeService.connect(settings.youtubeVideoId, settings.youtubeApiKey);

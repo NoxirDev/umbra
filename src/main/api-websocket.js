@@ -1,5 +1,6 @@
 // UMBRA API v2 - WebSocket module
 const { WebSocketServer } = require('ws');
+const CONSTANTS = require('../shared/constants');
 const logger = require('../shared/logger');
 
 class ApiWebSocket {
@@ -15,6 +16,63 @@ class ApiWebSocket {
     this.clients = new Set();
     this.eventHistory = [];
     this.maxHistorySize = 100;
+    
+    // Cleanup interval for inactive clients
+    this.cleanupInterval = null;
+    this.inactiveClients = new Map();
+  }
+
+  /**
+   * Start cleanup of inactive clients
+   */
+  startCleanup() {
+    if (this.cleanupInterval) {
+      clearInterval(this.cleanupInterval);
+    }
+    
+    this.cleanupInterval = setInterval(() => {
+      this.cleanupInactiveClients();
+    }, 300000); // Every 5 minutes
+  }
+
+  /**
+   * Stop cleanup
+   */
+  stopCleanup() {
+    if (this.cleanupInterval) {
+      clearInterval(this.cleanupInterval);
+      this.cleanupInterval = null;
+    }
+  }
+
+  /**
+   * Cleanup inactive clients
+   */
+  cleanupInactiveClients() {
+    const now = Date.now();
+    const inactiveThreshold = 24 * 60 * 60 * 1000; // 24 hours
+    
+    for (const [client, lastActive] of this.inactiveClients) {
+      if (now - lastActive > inactiveThreshold) {
+        try {
+          if (client.readyState === 1) {
+            client.close(1000, 'Inactivity timeout');
+          }
+        } catch (err) {
+          this.logger.error('Error closing inactive client', { error: err.message });
+        }
+        this.inactiveClients.delete(client);
+        this.clients.delete(client);
+      }
+    }
+    
+    // Clean up clients that are no longer connected
+    this.clients.forEach(client => {
+      if (client.readyState !== 1) {
+        this.clients.delete(client);
+        this.inactiveClients.delete(client);
+      }
+    });
   }
 
   /**
@@ -27,6 +85,11 @@ class ApiWebSocket {
       maxPayload: 64 * 1024 // 64KB max message size
     });
 
+    // Handle server errors
+    this.wsServer.on('error', (err) => {
+      this.logger.error('WebSocket server error', { error: err.message });
+    });
+
     this.wsServer.on('connection', (ws, req) => this.handleConnection(ws, req, apiKey));
     
     return this.wsServer;
@@ -37,7 +100,8 @@ class ApiWebSocket {
    */
   handleConnection(ws, req, apiKey) {
     // Check authentication from query parameter or headers
-    const url = new URL(req.url, `http://${req.headers.host}`);
+    const host = req.headers.host || 'localhost';
+    const url = new URL(req.url, `http://${host}`);
     const keyFromQuery = url.searchParams.get('key') || '';
     const authResult = this.middleware.checkAuth(req, apiKey);
     
@@ -55,7 +119,7 @@ class ApiWebSocket {
       type: 'welcome',
       message: 'Connected to UMBRA API v2 WebSocket',
       timestamp: new Date().toISOString(),
-      version: '2.1.1'
+      version: CONSTANTS.APP_VERSION
     });
 
     // Send recent event history
@@ -180,9 +244,12 @@ class ApiWebSocket {
     if (ws.readyState === 1) { // OPEN
       try {
         ws.send(JSON.stringify(data));
+        // Update client activity
+        this.inactiveClients.set(ws, Date.now());
       } catch (err) {
         this.logger.error('Failed to send WebSocket message to client', { error: err.message });
         this.clients.delete(ws);
+        this.inactiveClients.delete(ws);
       }
     }
   }
@@ -269,6 +336,9 @@ class ApiWebSocket {
    * Close WebSocket server
    */
   close() {
+    // Stop cleanup
+    this.stopCleanup();
+    
     if (this.wsServer) {
       // Close all client connections
       this.clients.forEach(client => {

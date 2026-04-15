@@ -1,5 +1,6 @@
 // UMBRA API v2 - Main server module (refactored)
 const http = require('http');
+const crypto = require('crypto');
 const ApiMiddleware = require('./api-middleware');
 const ApiWebSocket = require('./api-websocket');
 const ApiRouter = require('./api-router');
@@ -43,11 +44,17 @@ class ApiServerV2 {
     // Initialize rate limiting
     this.middleware.initRateLimitCleanup();
     
+    // Start log buffering
+    this.middleware.logger.startBuffering();
+    
     // Create HTTP server
     this.httpServer = http.createServer((req, res) => this.handleRequest(req, res, apiKey));
     
     // Initialize WebSocket server
     this.websocket.init(this.httpServer, apiKey);
+    
+    // Start WebSocket cleanup
+    this.websocket.startCleanup();
     
     // Setup error handling
     this.httpServer.on('error', (e) => this.handleServerError(e));
@@ -58,6 +65,7 @@ class ApiServerV2 {
       console.log(`UMBRA API v2 listening on http://127.0.0.1:${port}`);
       console.log(`WebSocket available at ws://127.0.0.1:${port}`);
       console.log(`Dashboard: http://127.0.0.1:${port}/dashboard`);
+      console.log(`Version: ${CONSTANTS.APP_VERSION}`);
     });
     
     return this.httpServer;
@@ -91,7 +99,7 @@ class ApiServerV2 {
    */
   async handleRequest(req, res, apiKey) {
     // Set CORS headers
-    this.middleware.setCorsHeaders(res);
+    this.middleware.setCorsHeaders(res, req);
     
     // Handle OPTIONS request
     if (this.middleware.handleOptions(req, res)) {
@@ -209,14 +217,19 @@ class ApiServerV2 {
    * Get server status
    */
   getStatus() {
+    const address = this.httpServer ? this.httpServer.address() : null;
     return {
       running: !!this.httpServer,
-      port: this.httpServer ? this.httpServer.address().port : null,
+      port: address && typeof address === 'object' ? address.port : null,
       clients: this.getWebSocketClientCount(),
       donations: this.getDonationHistory().length,
       messages: this.getMessageHistory().length,
       uptime: process.uptime()
     };
+  }
+
+  generateApiKey() {
+    return crypto.randomBytes(32).toString('hex');
   }
 }
 

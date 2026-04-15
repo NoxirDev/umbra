@@ -57,6 +57,9 @@ class ApiMiddleware {
       this.rateLimitCleanup = null;
     }
     this.rateLimit.clear();
+    
+    // Stop log buffering
+    this.logger.stopBuffering();
   }
 
   /**
@@ -83,8 +86,21 @@ class ApiMiddleware {
   /**
    * Set CORS headers
    */
-  setCorsHeaders(res) {
-    res.setHeader('Access-Control-Allow-Origin', '*');
+  setCorsHeaders(res, req) {
+    const origin = req.headers.origin;
+    const allowedOrigins = [
+      'http://127.0.0.1:4587',
+      'http://localhost:4587',
+      'http://127.0.0.1:3000',
+      'http://localhost:3000'
+    ];
+    
+    if (allowedOrigins.includes(origin) || origin === 'null') {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+    } else {
+      res.setHeader('Access-Control-Allow-Origin', 'null');
+    }
+    
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-API-Key, Authorization');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
     res.setHeader('Content-Type', 'application/json');
@@ -186,6 +202,98 @@ class ApiMiddleware {
     const userAgent = req.headers['user-agent'] || 'unknown';
     
     this.logger.logRequest(method, url, ip, statusCode, userAgent);
+  }
+
+  /**
+   * Validate donation data
+   */
+  validateDonation(data) {
+    const errors = [];
+    
+    if (!data.name || typeof data.name !== 'string' || data.name.trim().length === 0) {
+      errors.push('Name is required and must be a non-empty string');
+    }
+    
+    if (!data.amount || isNaN(parseFloat(data.amount)) || parseFloat(data.amount) < 0) {
+      errors.push('Amount must be a valid positive number');
+    }
+    
+    if (data.message && typeof data.message !== 'string') {
+      errors.push('Message must be a string');
+    }
+    
+    if (data.currency && !/^[A-Z]{3}$/.test(data.currency)) {
+      errors.push('Currency must be a valid 3-letter code (e.g., USD, EUR)');
+    }
+    
+    return {
+      valid: errors.length === 0,
+      errors
+    };
+  }
+
+  /**
+   * Validate message data
+   */
+  validateMessage(data) {
+    const errors = [];
+    
+    if (!data.author || typeof data.author !== 'string' || data.author.trim().length === 0) {
+      errors.push('Author is required and must be a non-empty string');
+    }
+    
+    if (!data.text || typeof data.text !== 'string' || data.text.trim().length === 0) {
+      errors.push('Text is required and must be a non-empty string');
+    }
+    
+    if (data.text && data.text.length > 500) {
+      errors.push('Text must be less than 500 characters');
+    }
+    
+    if (data.color && !/^#[0-9a-fA-F]{6}$/.test(data.color)) {
+      errors.push('Color must be a valid hex color (e.g., #ffffff)');
+    }
+    
+    return {
+      valid: errors.length === 0,
+      errors
+    };
+  }
+
+  /**
+   * Validate webhook data
+   */
+  validateWebhook(data) {
+    const errors = [];
+    
+    if (!data.url || typeof data.url !== 'string' || !this.isValidUrl(data.url)) {
+      errors.push('URL is required and must be a valid URL');
+    }
+    
+    if (!data.events || !Array.isArray(data.events) || data.events.length === 0) {
+      errors.push('Events must be a non-empty array');
+    }
+    
+    if (data.secret && typeof data.secret !== 'string') {
+      errors.push('Secret must be a string');
+    }
+    
+    return {
+      valid: errors.length === 0,
+      errors
+    };
+  }
+
+  /**
+   * Check if URL is valid
+   */
+  isValidUrl(urlString) {
+    try {
+      const url = new URL(urlString);
+      return url.protocol === 'http:' || url.protocol === 'https:';
+    } catch {
+      return false;
+    }
   }
 }
 

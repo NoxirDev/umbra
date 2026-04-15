@@ -21,3 +21,4 @@ app.asar
 *.AppImage
 .vscode/
 .idea/
+*.backup

@@ -33,7 +33,10 @@ app.on('web-contents-created', (_e, contents) => {
     return { action: 'deny' };
   });
   contents.on('before-input-event', (e, input) => {
-    if (input.key === 'F12') e.preventDefault();
+    if (input.key === 'F12' ||
+        (input.key === 'I' && input.control && input.shift)) {
+      e.preventDefault();
+    }
   });
 });
 
@@ -44,8 +47,8 @@ const iconPathIco = path.join(__dirname, '..', '..', 'assets', 'icon.ico');
 // Initialize managers
 const settingsManager = new SettingsManager();
 const statisticsManager = new StatisticsManager();
-const notificationManager = new NotificationManager(iconPath);
 const windowManager = new WindowManager(iconPath, iconPathIco);
+const notificationManager = new NotificationManager(iconPath, windowManager);
 const apiServer = new ApiServer(settingsManager, windowManager, statisticsManager, notificationManager);
 
 /**
@@ -74,7 +77,7 @@ const clickThroughState = {
 };
 
 const trayManager = new TrayManager(iconPath, iconPathIco, windowManager, clickThroughState);
-const ipcHandlers = new IpcHandlers(settingsManager, windowManager, apiServer, trayManager);
+const ipcHandlers = new IpcHandlers(settingsManager, windowManager, apiServer, trayManager, notificationManager);
 
 /**
  * App ready - Initialize application
@@ -93,6 +96,12 @@ app.whenReady().then(() => {
 
   // Register IPC handlers
   ipcHandlers.register();
+
+  // Renderer error reporting
+  const { ipcMain } = require('electron');
+  ipcMain.on('renderer-error', (_e, message) => {
+    console.error('[Renderer Error]', message);
+  });
 
   // Start API if enabled
   if (settings.apiEnabled) {
@@ -137,6 +146,7 @@ app.on('window-all-closed', () => {
  * Before quit cleanup
  */
 app.on('before-quit', () => {
+  statisticsManager._flushSave();
   apiServer.stop();
   ipcHandlers.cleanup();
   trayManager.destroy();

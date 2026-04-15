@@ -8,8 +8,22 @@
   let reconnecting = false;
   let attempt = 0;
   let channel = '';
+  let resolvedChatroomId = null;
 
-  function connect(channelName) {
+  async function resolveChatroomId(channelName) {
+    try {
+      const res = await fetch(`https://kick.com/api/v2/channels/${encodeURIComponent(channelName)}`);
+      if (!res.ok) return null;
+      const data = await res.json();
+      const chatroomId = data.chatroom?.id || data.chatroom_id;
+      if (chatroomId) return String(chatroomId);
+    } catch (e) {
+      console.error('[Kick] Failed to resolve channel:', e);
+    }
+    return null;
+  }
+
+  async function connect(channelName) {
     if (!channelName) {
       disconnect();
       return;
@@ -18,6 +32,12 @@
     channel = channelName;
     disconnect();
     reconnecting = true;
+
+    resolvedChatroomId = await resolveChatroomId(channelName);
+    if (!resolvedChatroomId) {
+      console.error('[Kick] Could not resolve chatroom ID for:', channelName);
+      return;
+    }
 
     ws = new WebSocket('wss://ws-us2.pusher.com/app/32cbd69e4b950bf97679?protocol=7&client=js&version=7.6.0&flash=false');
 
@@ -37,7 +57,7 @@
       if (d.event === 'pusher:connection_established') {
         ws.send(JSON.stringify({
           event: 'pusher:subscribe',
-          data: { auth: '', channel: 'chatrooms.' + channel + '.v2' },
+          data: { auth: '', channel: 'chatrooms.' + resolvedChatroomId + '.v2' },
         }));
         return;
       }
@@ -74,9 +94,9 @@
       ws.close();
       ws = null;
     }
+    resolvedChatroomId = null;
   }
 
-  // Export to global
   window.KickService = {
     connect,
     disconnect,

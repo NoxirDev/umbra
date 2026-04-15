@@ -407,7 +407,7 @@ body {
         const headers = API_KEY ? { 'X-API-Key': API_KEY } : {};
         const response = await fetch('http://127.0.0.1:4587/v2/stats', { headers });
         const result = await response.json();
-        if (result.ok) {
+        if (result.success) {
           updateGoal(result.data.goal);
         }
       } catch (e) {

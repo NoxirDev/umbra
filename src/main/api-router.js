@@ -2,6 +2,8 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const https = require('https');
+const CONSTANTS = require('../shared/constants');
 const logger = require('../shared/logger');
 
 class ApiRouter {
@@ -104,7 +106,7 @@ class ApiRouter {
       } else {
         this.middleware.sendSuccess(res, {
           message: 'UMBRA API v2',
-          version: '2.1.1',
+          version: CONSTANTS.APP_VERSION,
           endpoints: ['/v2/*', '/obs/*', '/dashboard'],
           documentation: 'See docs/API.md'
         });
@@ -208,7 +210,7 @@ class ApiRouter {
       
       const data = {
         status: overallStatus,
-        version: '2.1.1',
+        version: CONSTANTS.APP_VERSION,
         timestamp: new Date().toISOString(),
         uptime: process.uptime(),
         memory: {
@@ -258,7 +260,9 @@ class ApiRouter {
    * Get donations
    */
   handleGetDonations(req, res) {
-    const limit = parseInt(req.url.split('?limit=')[1]) || 50;
+    const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+    const limitParam = url.searchParams.get('limit');
+    const limit = Math.min(500, Math.max(1, parseInt(limitParam) || 50));
     const donations = this.donationHistory.slice(-limit).reverse();
     
     this.middleware.sendSuccess(res, {
@@ -273,15 +277,16 @@ class ApiRouter {
    */
   handlePostDonation(req, res, body) {
     // Validate donation
-    if (!body.name || !body.amount) {
-      this.middleware.sendError(res, 400, 'Missing required fields: name, amount');
+    const validation = this.middleware.validateDonation(body);
+    if (!validation.valid) {
+      this.middleware.sendError(res, 400, 'Validation failed', validation.errors);
       return;
     }
 
     const donation = {
       id: crypto.randomBytes(8).toString('hex'),
       name: String(body.name).slice(0, 50),
-      amount: parseFloat(body.amount) || 0,
+      amount: Math.max(0, parseFloat(body.amount)) || 0,
       message: String(body.message || '').slice(0, 500),
       currency: String(body.currency || 'USD').toUpperCase(),
       timestamp: new Date().toISOString(),
@@ -298,7 +303,7 @@ class ApiRouter {
     this.statisticsManager.recordDonation(donation);
 
     // Send notification
-    this.notificationManager.sendDonationNotification(donation);
+    this.notificationManager.notifyDonation(donation);
 
     // Broadcast via WebSocket
     this.websocket.broadcastDonation(donation);
@@ -313,7 +318,9 @@ class ApiRouter {
    * Get messages
    */
   handleGetMessages(req, res) {
-    const limit = parseInt(req.url.split('?limit=')[1]) || 100;
+    const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+    const limitParam = url.searchParams.get('limit');
+    const limit = Math.min(500, Math.max(1, parseInt(limitParam) || 100));
     const messages = this.messageHistory.slice(-limit).reverse();
     
     this.middleware.sendSuccess(res, {
@@ -327,8 +334,10 @@ class ApiRouter {
    * Post new message
    */
   handlePostMessage(req, res, body) {
-    if (!body.author || !body.text) {
-      this.middleware.sendError(res, 400, 'Missing required fields: author, text');
+    // Validate message
+    const validation = this.middleware.validateMessage(body);
+    if (!validation.valid) {
+      this.middleware.sendError(res, 400, 'Validation failed', validation.errors);
       return;
     }
 
@@ -358,14 +367,15 @@ class ApiRouter {
    */
   handleGetGoal(req, res) {
     const settings = this.settingsManager.get();
-    const goal = settings.goal || {
-      enabled: false,
-      target: 0,
-      current: 0,
-      title: '',
-      description: ''
+    const goal = {
+      enabled: (settings.goalTarget || 0) > 0,
+      target: settings.goalTarget || 0,
+      current: settings.goalCurrent || 0,
+      title: settings.goalTitle || '',
+      percentage: (settings.goalTarget || 0) > 0
+        ? Math.min(100, ((settings.goalCurrent || 0) / settings.goalTarget) * 100)
+        : 0,
     };
-    
     this.middleware.sendSuccess(res, goal);
   }
 
@@ -374,23 +384,28 @@ class ApiRouter {
    */
   handlePostGoal(req, res, body) {
     const settings = this.settingsManager.get();
-    const currentGoal = settings.goal || { enabled: false, target: 0, current: 0 };
-    
-    const updatedGoal = {
-      enabled: body.enabled !== undefined ? Boolean(body.enabled) : currentGoal.enabled,
-      target: body.target !== undefined ? parseFloat(body.target) : currentGoal.target,
-      current: body.current !== undefined ? parseFloat(body.current) : currentGoal.current,
-      title: String(body.title || currentGoal.title || '').slice(0, 100),
-      description: String(body.description || currentGoal.description || '').slice(0, 500)
+
+    const updates = {};
+    if (body.target !== undefined) updates.goalTarget = Math.max(0, parseFloat(body.target) || 0);
+    if (body.current !== undefined) updates.goalCurrent = Math.max(0, parseFloat(body.current) || 0);
+    if (body.title !== undefined) updates.goalTitle = String(body.title).slice(0, 100);
+
+    this.settingsManager.update(updates);
+
+    const updated = this.settingsManager.get();
+    const goal = {
+      enabled: (updated.goalTarget || 0) > 0,
+      target: updated.goalTarget || 0,
+      current: updated.goalCurrent || 0,
+      title: updated.goalTitle || '',
+      percentage: (updated.goalTarget || 0) > 0
+        ? Math.min(100, ((updated.goalCurrent || 0) / updated.goalTarget) * 100)
+        : 0,
     };
 
-    // Update settings
-    this.settingsManager.update({ goal: updatedGoal });
+    this.websocket.broadcastGoalUpdate(goal);
 
-    // Broadcast via WebSocket
-    this.websocket.broadcastGoalUpdate(updatedGoal);
-
-    this.middleware.sendSuccess(res, updatedGoal);
+    this.middleware.sendSuccess(res, goal);
   }
 
   /**
@@ -398,8 +413,8 @@ class ApiRouter {
    */
   handleOBSConfig(req, res) {
     const settings = this.settingsManager.get();
-    const apiKey = settings.api?.key || '';
-    const port = settings.api?.port || 4587;
+    const apiKey = settings.apiKey || '';
+    const port = settings.apiPort || 4587;
     
     const config = {
       overlay: `http://127.0.0.1:${port}/obs/overlay${apiKey ? `?key=${apiKey}` : ''}`,
@@ -419,8 +434,7 @@ class ApiRouter {
   handleSettings(req, res, body, method) {
     if (method === 'GET') {
       const settings = this.settingsManager.get();
-      // Remove sensitive data
-      const { api, ...safeSettings } = settings;
+      const { apiKey, daToken, youtubeApiKey, ...safeSettings } = settings;
       this.middleware.sendSuccess(res, safeSettings);
     } else if (method === 'PATCH') {
       // Update settings
@@ -444,9 +458,10 @@ class ApiRouter {
     if (method === 'GET') {
       this.middleware.sendSuccess(res, { webhooks: this.webhooks });
     } else if (method === 'POST') {
-      // Add webhook
-      if (!body.url || !body.events) {
-        this.middleware.sendError(res, 400, 'Missing required fields: url, events');
+      // Validate webhook data
+      const validation = this.middleware.validateWebhook(body);
+      if (!validation.valid) {
+        this.middleware.sendError(res, 400, 'Validation failed', validation.errors);
         return;
       }
       
@@ -510,8 +525,74 @@ class ApiRouter {
       webhookId: webhook.id
     };
 
-    // TODO: Implement actual HTTP request
-    this.logger.info('Webhook triggered', { url: webhook.url, event: eventType, webhookId: webhook.id });
+    try {
+      const postData = JSON.stringify(payload);
+      
+      const options = {
+        hostname: new URL(webhook.url).hostname,
+        port: new URL(webhook.url).port || (webhook.url.startsWith('https:') ? 443 : 80),
+        path: new URL(webhook.url).pathname,
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(postData),
+          'User-Agent': 'UMBRA/2.1.1',
+          'X-Webhook-Event': eventType
+        },
+        timeout: 10000 // 10 seconds timeout
+      };
+
+      // Add signature if secret is provided
+      if (webhook.secret) {
+        const signature = crypto
+          .createHmac('sha256', webhook.secret)
+          .update(postData)
+          .digest('hex');
+        options.headers['X-Webhook-Signature'] = `sha256=${signature}`;
+      }
+
+      const req = https.request(options, (res) => {
+        let body = '';
+        
+        res.on('data', (chunk) => {
+          body += chunk;
+        });
+        
+        res.on('end', () => {
+          this.logger.info('Webhook response', {
+            webhookId: webhook.id,
+            statusCode: res.statusCode,
+            event: eventType,
+            url: webhook.url
+          });
+        });
+      });
+
+      req.on('error', (error) => {
+        this.logger.error(`Webhook request failed for ${webhook.id}`, {
+          error: error.message,
+          event: eventType,
+          url: webhook.url
+        });
+      });
+
+      req.on('timeout', () => {
+        req.destroy();
+        this.logger.error(`Webhook timeout for ${webhook.id}`, {
+          event: eventType,
+          url: webhook.url
+        });
+      });
+
+      req.write(postData);
+      req.end();
+    } catch (error) {
+      this.logger.error(`Webhook processing error for ${webhook.id}`, {
+        error: error.message,
+        event: eventType,
+        url: webhook.url
+      });
+    }
   }
 }
 

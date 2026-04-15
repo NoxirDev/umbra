@@ -3,14 +3,15 @@ const { Notification } = require('electron');
 const path = require('path');
 
 class NotificationManager {
-  constructor(iconPath) {
+  constructor(iconPath, windowManager) {
     this.iconPath = iconPath;
+    this.windowManager = windowManager;
     this.enabled = true;
     this.settings = {
       donations: true,
       goals: true,
       milestones: true,
-      minDonationAmount: 0, // Notify for all donations by default
+      minDonationAmount: 0,
     };
   }
 
@@ -59,10 +60,7 @@ class NotificationManager {
     notification.show();
 
     notification.on('click', () => {
-      // Focus overlay window when notification is clicked
-      const { BrowserWindow } = require('electron');
-      const windows = BrowserWindow.getAllWindows();
-      const overlay = windows.find(w => w.getTitle() === 'UMBRA');
+      const overlay = this.windowManager?.getOverlayWindow();
       if (overlay) {
         overlay.show();
         overlay.focus();

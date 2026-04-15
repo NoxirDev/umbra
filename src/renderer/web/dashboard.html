@@ -346,11 +346,14 @@
     let ws = null;
 
     // Connect to WebSocket
+    let wsReconnectAttempt = 0;
+
     function connectWebSocket() {
       ws = new WebSocket(`ws://127.0.0.1:4587`);
 
       ws.onopen = () => {
         console.log('WebSocket connected');
+        wsReconnectAttempt = 0;
       };
 
       ws.onmessage = (event) => {
@@ -366,26 +369,25 @@
 
       ws.onclose = () => {
         console.log('WebSocket disconnected, reconnecting...');
-        setTimeout(connectWebSocket, 3000);
+        wsReconnectAttempt++;
+        const delay = Math.min(30000, 3000 * Math.pow(2, wsReconnectAttempt - 1));
+        setTimeout(connectWebSocket, delay);
       };
     }
 
     // Fetch stats
     async function fetchStats() {
       try {
-        const [statsRes, goalRes, topRes] = await Promise.all([
-          fetch(`${API_BASE}/v2/statistics`),
+        const [statsRes, goalRes] = await Promise.all([
+          fetch(`${API_BASE}/v2/stats`),
           fetch(`${API_BASE}/v2/goal`),
-          fetch(`${API_BASE}/v2/statistics/top?limit=10`)
         ]);
 
         const stats = await statsRes.json();
         const goal = await goalRes.json();
-        const top = await topRes.json();
 
         updateGoal(goal.data);
         updateStats(stats.data);
-        updateTopDonators(top.data.top_donators);
       } catch (error) {
         console.error('Failed to fetch stats:', error);
       }
@@ -401,18 +403,25 @@
     }
 
     function updateStats(stats) {
-      // Session stats (from history)
-      fetch(`${API_BASE}/v2/stats`).then(r => r.json()).then(data => {
-        const session = data.data.session;
-        document.getElementById('session-donations').textContent = data.data.history.donations;
-        document.getElementById('session-amount').textContent = `${session.total_donations.toFixed(2)} ₽`;
-        document.getElementById('session-messages').textContent = session.total_messages;
-      });
+      const allTime = stats.allTime || {};
+      const session = stats.session || {};
+      const topDonators = stats.topDonators || [];
 
-      // All-time stats
-      document.getElementById('alltime-donations').textContent = stats.totalDonations;
-      document.getElementById('alltime-amount').textContent = `${stats.totalAmount.toFixed(2)} ₽`;
-      document.getElementById('alltime-average').textContent = `${stats.averageDonation} ₽`;
+      document.getElementById('session-donations').textContent = session.total_donations || 0;
+      document.getElementById('session-amount').textContent = `${(session.total_amount || 0).toFixed(2)} ₽`;
+      document.getElementById('session-messages').textContent = session.total_messages || 0;
+
+      document.getElementById('alltime-donations').textContent = allTime.totalDonations || 0;
+      document.getElementById('alltime-amount').textContent = `${(allTime.totalAmount || 0).toFixed(2)} ₽`;
+      document.getElementById('alltime-average').textContent = `${allTime.averageDonation || 0} ₽`;
+
+      updateTopDonators(topDonators);
+    }
+
+    function escapeHtml(str) {
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
     }
 
     function updateTopDonators(donators) {
@@ -426,10 +435,10 @@
         <li class="donator-item">
           <div class="donator-rank">${i + 1}</div>
           <div class="donator-info">
-            <div class="donator-name">${d.name}</div>
+            <div class="donator-name">${escapeHtml(d.name)}</div>
             <div class="donator-count">${d.count} донат${d.count > 1 ? 'ов' : ''}</div>
           </div>
-          <div class="donator-amount">${d.amount.toFixed(2)} ₽</div>
+          <div class="donator-amount">${(d.amount || 0).toFixed(2)} ₽</div>
         </li>
       `).join('');
     }

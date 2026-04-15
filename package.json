@@ -10,7 +10,10 @@
     "build:win": "electron-builder --win",
     "build:nsis": "electron-builder --win nsis",
     "build:portable": "electron-builder --win portable",
-    "build:all": "electron-builder --win nsis portable"
+    "build:inno": "electron-builder --win inno",
+    "build:appx": "electron-builder --win appx",
+    "build:all": "electron-builder --win nsis portable inno appx",
+    "test": "jest"
   },
   "author": "Noxir",
   "license": "MIT",
@@ -18,8 +21,9 @@
     "ws": "^8.18.0"
   },
   "devDependencies": {
-    "electron": "^33.0.0",
-    "electron-builder": "^24.13.3"
+    "electron": "^41.2.0",
+    "electron-builder": "^26.8.1",
+    "jest": "^30.3.0"
   },
   "build": {
     "appId": "com.noxir.umbra",
@@ -48,12 +52,22 @@
           "arch": [
             "x64"
           ]
+        },
+        {
+          "target": "inno",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "appx",
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "icon": "assets/icon.ico",
-      "artifactName": "${productName}-${version}-${arch}.${ext}",
-      "publisherName": "Noxir",
-      "verifyUpdateCodeSignature": false
+      "artifactName": "${productName}-${version}-${arch}.${ext}"
     },
     "nsis": {
       "oneClick": false,
@@ -83,6 +97,18 @@
       "artifactName": "${productName}-${version}-Portable.${ext}",
       "requestExecutionLevel": "user"
     },
+    "appx": {
+      "identityName": "Noxir.UMBRA",
+      "publisher": "CN=Noxir",
+      "publisherDisplayName": "Noxir",
+      "displayName": "UMBRA Stream Overlay",
+      "backgroundColor": "#1a1a2e",
+      "artifactName": "${productName}-${version}-${arch}.msix",
+      "languages": [
+        "en-US",
+        "ru-RU"
+      ]
+    },
     "extraMetadata": {
       "main": "src/main/index.js"
     },
@@ -92,7 +118,9 @@
     },
     "protocols": {
       "name": "umbra",
-      "schemes": ["umbra"]
+      "schemes": [
+        "umbra"
+      ]
     },
     "fileAssociations": [
       {

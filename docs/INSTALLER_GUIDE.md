@@ -180,6 +180,123 @@ jobs:
           path: dist/
 ```
 
+## Современные методы установки: AppInstaller и MSIX
+
+### Что такое AppInstaller?
+AppInstaller - это современный формат установки для Windows 10/11, который предоставляет:
+- **Автоматические обновления** - приложение обновляется при запуске
+- **Безопасная установка** - изолированная среда (контейнеры Windows)
+- **Простая установка** - двойной щелчок по `.appinstaller` файлу
+- **Интеграция с Microsoft Store** - возможность распространения через Store
+
+### Подготовка к созданию AppInstaller
+
+#### 1. Создание самоподписанного сертификата
+```powershell
+# Запустите скрипт из директории certs
+cd certs
+powershell -ExecutionPolicy Bypass -File .\create-certificate-simple.ps1
+```
+
+Сертификат будет создан в `certs/umbra-signing-cert.pfx` (пароль: `umbra123`).
+
+#### 2. Конфигурация AppX в package.json
+UMBRA уже настроена для сборки AppX/MSIX пакетов. Проверьте секцию `appx` в `package.json`:
+
+```json
+"appx": {
+  "identityName": "Noxir.UMBRA",
+  "publisher": "CN=Noxir",
+  "publisherDisplayName": "Noxir",
+  "displayName": "UMBRA Stream Overlay",
+  "backgroundColor": "#1a1a2e",
+  "artifactName": "${productName}-${version}-${arch}.msix",
+  "languages": ["en-US", "ru-RU"]
+}
+```
+
+#### 3. Сборка MSIX пакета
+```bash
+# Собрать AppX/MSIX пакет
+npm run build:appx
+```
+
+**Примечание:** В текущей версии Electron Builder есть проблема с загрузкой winCodeSign на Windows (символические ссылки на macOS файлы). В качестве временного решения можно:
+- Использовать Windows Server для сборки
+- Или использовать уже собранный NSIS установщик
+
+### Создание AppInstaller файла
+
+#### Автоматическая генерация
+Запустите скрипт для создания AppInstaller файла:
+```bash
+node scripts/generate-appinstaller.js 2.1.1.0 https://example.com/umbra/UMBRA.msix
+```
+
+Файлы будут созданы в `dist/`:
+- `UMBRA.appinstaller` - XML файл для установки
+- `install.html` - веб-страница для загрузки
+
+#### Структура AppInstaller файла
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<AppInstaller
+    xmlns="http://schemas.microsoft.com/appx/appinstaller/2018"
+    Version="2.1.1.0"
+    Uri="https://example.com/umbra/UMBRA.msix">
+    <MainPackage
+        Name="UMBRA"
+        Publisher="CN=Noxir"
+        Version="2.1.1.0"
+        ProcessorArchitecture="x64"
+        Uri="https://example.com/umbra/UMBRA.msix"/>
+    <UpdateSettings>
+        <OnLaunch HoursBetweenUpdateChecks="0"/>
+        <AutomaticBackgroundTask/>
+    </UpdateSettings>
+</AppInstaller>
+```
+
+### Установка через AppInstaller
+
+#### Для конечных пользователей:
+1. **Скачайте** `UMBRA.appinstaller` и `UMBRA.msix` в одну папку
+2. **Дважды щелкните** по `UMBRA.appinstaller`
+3. **Разрешите установку** (Windows может предупредить о неизвестном издателе)
+4. **Приложение установится** и появится в меню "Пуск"
+
+#### Для разработчиков:
+1. **Установите сертификат** в доверенные корневые центры:
+   ```powershell
+   Import-Certificate -FilePath "certs/umbra-signing-cert.cer" -CertStoreLocation "Cert:\LocalMachine\Root"
+   ```
+2. **Установите пакет** через PowerShell:
+   ```powershell
+   Add-AppxPackage -Path "dist\UMBRA.msix"
+   ```
+
+### Преимущества MSIX/AppInstaller
+
+| Функция | NSIS | MSIX/AppInstaller |
+|---------|------|-------------------|
+| Автоматические обновления | ❌ Требуется отдельный механизм | ✅ Встроенная поддержка |
+| Безопасность | ❌ Полный доступ к системе | ✅ Изолированная среда |
+| Откат установки | ❌ Сложно | ✅ Встроенный откат |
+| Установка без прав администратора | ❌ Часто требует | ✅ Обычно не требует |
+| Распространение через Microsoft Store | ❌ Невозможно | ✅ Возможно |
+
+### Ограничения MSIX для UMBRA
+
+1. **Доступ к файловой системе** - MSIX приложения работают в изолированной среде, что может ограничить доступ к некоторым папкам
+2. **Фоновые процессы** - могут требовать специальных разрешений
+3. **Совместимость с Electron** - не все функции Electron могут работать в контейнере MSIX
+
+### Рекомендации
+
+1. **Для большинства пользователей** используйте NSIS установщик - он проверен и работает
+2. **Для продвинутых пользователей** предложите MSIX вариант с автоматическими обновлениями
+3. **Для Microsoft Store** потребуется коммерческий сертификат и проверка Microsoft
+
 ## Заключение
 
 Текущая конфигурация Electron Builder уже предоставляет хороший базовый установщик. Для профессионального уровня нужно:
@@ -188,5 +305,6 @@ jobs:
 2. **Автообновления** - для удобства пользователей
 3. **Кастомные страницы** - для лучшего UX
 4. **CI/CD пайплайн** - для автоматизации
+5. **Современные форматы** - AppInstaller для Windows 10/11
 
 Эти улучшения займут 1-2 дня разработки, но значительно улучшат восприятие приложения как профессионального продукта.

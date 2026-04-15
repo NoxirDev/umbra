@@ -928,10 +928,10 @@ API.onReady((s) => {
   // OBS URLs
   const port = s.apiPort || 4587;
   const theme = s.theme || 'default';
-  document.getElementById('obs-overlay-url').value = `http://127.0.0.1:${port}/obs/overlay.html?theme=${theme}`;
-  document.getElementById('obs-chat-url').value = `http://127.0.0.1:${port}/obs/chat.html?theme=${theme}`;
-  document.getElementById('obs-donations-url').value = `http://127.0.0.1:${port}/obs/donations.html?theme=${theme}`;
-  document.getElementById('obs-goal-url').value = `http://127.0.0.1:${port}/obs/goal.html?theme=${theme}`;
+  document.getElementById('obs-overlay-url').value = `http://127.0.0.1:${port}/obs/overlay?theme=${theme}`;
+  document.getElementById('obs-chat-url').value = `http://127.0.0.1:${port}/obs/chat?theme=${theme}`;
+  document.getElementById('obs-donations-url').value = `http://127.0.0.1:${port}/obs/donations?theme=${theme}`;
+  document.getElementById('obs-goal-url').value = `http://127.0.0.1:${port}/obs/goal?theme=${theme}`;
   // New settings
   if (s.theme)            document.getElementById('theme-select').value = s.theme || 'default';
   // Activate theme card
@@ -1025,10 +1025,10 @@ document.querySelectorAll('.theme-card').forEach(card => {
 
     // Update OBS URLs
     const port = document.getElementById('api-port').value || 4587;
-    document.getElementById('obs-overlay-url').value = `http://127.0.0.1:${port}/obs/overlay.html?theme=${theme}`;
-    document.getElementById('obs-chat-url').value = `http://127.0.0.1:${port}/obs/chat.html?theme=${theme}`;
-    document.getElementById('obs-donations-url').value = `http://127.0.0.1:${port}/obs/donations.html?theme=${theme}`;
-    document.getElementById('obs-goal-url').value = `http://127.0.0.1:${port}/obs/goal.html?theme=${theme}`;
+    document.getElementById('obs-overlay-url').value = `http://127.0.0.1:${port}/obs/overlay?theme=${theme}`;
+    document.getElementById('obs-chat-url').value = `http://127.0.0.1:${port}/obs/chat?theme=${theme}`;
+    document.getElementById('obs-donations-url').value = `http://127.0.0.1:${port}/obs/donations?theme=${theme}`;
+    document.getElementById('obs-goal-url').value = `http://127.0.0.1:${port}/obs/goal?theme=${theme}`;
   });
 });
 

@@ -2,11 +2,12 @@
 const { ipcMain, screen } = require('electron');
 
 class IpcHandlers {
-  constructor(settingsManager, windowManager, apiServer, trayManager) {
+  constructor(settingsManager, windowManager, apiServer, trayManager, notificationManager) {
     this.settingsManager = settingsManager;
     this.windowManager = windowManager;
     this.apiServer = apiServer;
     this.trayManager = trayManager;
+    this.notificationManager = notificationManager;
     this.clickThroughEnabled = false;
     this.ctPollInterval = null;
     this.ctUIBounds = null;
@@ -60,6 +61,10 @@ class IpcHandlers {
       };
 
       this.settingsManager.save(safe);
+
+      if (this.notificationManager) {
+        this.notificationManager.updateSettings(safe);
+      }
 
       const overlay = this.windowManager.getOverlayWindow();
       overlay?.webContents.send('apply-settings', safe);

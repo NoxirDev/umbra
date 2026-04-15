@@ -1,61 +1,100 @@
-// Settings management module
 const fs = require('fs');
 const path = require('path');
-const { app } = require('electron');
+const { app, safeStorage } = require('electron');
 const CONSTANTS = require('../shared/constants');
+const { safeInt } = require('../shared/utils');
+
+const SECRET_KEYS = ['daToken', 'youtubeApiKey', 'apiKey'];
 
 class SettingsManager {
   constructor() {
     this.settingsPath = path.join(app.getPath('userData'), 'settings.json');
+    this.secretsPath = path.join(app.getPath('userData'), 'secrets.enc');
     this.settings = this.load();
   }
 
-  /**
-   * Load settings from disk with error handling
-   */
+  _canEncrypt() {
+    return safeStorage && safeStorage.isEncryptionAvailable();
+  }
+
+  _encryptSecrets(settings) {
+    if (!this._canEncrypt()) return;
+    try {
+      const secrets = {};
+      for (const key of SECRET_KEYS) {
+        if (settings[key]) {
+          secrets[key] = settings[key];
+        }
+      }
+      if (Object.keys(secrets).length > 0) {
+        const encrypted = safeStorage.encryptString(JSON.stringify(secrets));
+        fs.writeFileSync(this.secretsPath, encrypted);
+      } else if (fs.existsSync(this.secretsPath)) {
+        fs.unlinkSync(this.secretsPath);
+      }
+    } catch (e) {
+      console.error('[Settings] Failed to encrypt secrets:', e.message);
+    }
+  }
+
+  _decryptSecrets() {
+    if (!this._canEncrypt() || !fs.existsSync(this.secretsPath)) return {};
+    try {
+      const encrypted = fs.readFileSync(this.secretsPath);
+      const decrypted = safeStorage.decryptString(encrypted);
+      return JSON.parse(decrypted);
+    } catch (e) {
+      console.error('[Settings] Failed to decrypt secrets:', e.message);
+      try { fs.unlinkSync(this.secretsPath); } catch {}
+      return {};
+    }
+  }
+
   load() {
     try {
       if (fs.existsSync(this.settingsPath)) {
         const data = fs.readFileSync(this.settingsPath, 'utf8');
         const parsed = JSON.parse(data);
+        const secrets = this._decryptSecrets();
+        for (const key of SECRET_KEYS) {
+          if (secrets[key]) parsed[key] = secrets[key];
+        }
         return this.sanitize(parsed);
       }
     } catch (error) {
       console.error('[Settings] Failed to load:', error.message);
-      // Try to backup corrupted file
       this.backupCorruptedFile();
     }
     return this.getDefaults();
   }
 
-  /**
-   * Backup corrupted settings file
-   */
   backupCorruptedFile() {
     try {
       if (fs.existsSync(this.settingsPath)) {
         const backupPath = this.settingsPath + '.backup.' + Date.now();
         fs.copyFileSync(this.settingsPath, backupPath);
-        console.log('[Settings] Corrupted file backed up to:', backupPath);
       }
     } catch (err) {
       console.error('[Settings] Failed to backup corrupted file:', err.message);
     }
   }
 
-  /**
-   * Save settings to disk with error handling
-   */
   save(settings) {
     try {
       this.settings = this.sanitize(settings);
-      const data = JSON.stringify(this.settings, null, 2);
+      const secrets = {};
+      const publicSettings = { ...this.settings };
+      for (const key of SECRET_KEYS) {
+        if (publicSettings[key]) {
+          secrets[key] = publicSettings[key];
+          publicSettings[key] = '';
+        }
+      }
+      this._encryptSecrets(this.settings);
 
-      // Atomic write: write to temp file first
+      const data = JSON.stringify(publicSettings, null, 2);
       const tempPath = this.settingsPath + '.tmp';
       fs.writeFileSync(tempPath, data, 'utf8');
-
-      // Rename temp file to actual file (atomic on most systems)
       fs.renameSync(tempPath, this.settingsPath);
 
       return true;
@@ -75,11 +114,6 @@ class SettingsManager {
   }
 
   sanitize(s) {
-    const safeInt = (val, def) => {
-      const n = parseInt(val);
-      return isNaN(n) ? def : n;
-    };
-
     const safeKey = (k) => {
       return String(k || '').replace(/[^a-zA-Z0-9+\-_ ]/g, '').slice(0, 30);
     };
@@ -87,7 +121,6 @@ class SettingsManager {
     const hk = s.hotkeys || {};
 
     return {
-      // Connections
       twitchChannel: String(s.twitchChannel || '')
         .replace(/[^a-zA-Z0-9_]/g, '')
         .slice(0, 25),
@@ -104,7 +137,6 @@ class SettingsManager {
         .replace(/[^a-zA-Z0-9_]/g, '')
         .slice(0, 50),
 
-      // Display
       opacity: Math.min(
         CONSTANTS.OPACITY_MAX,
         Math.max(CONSTANTS.OPACITY_MIN, safeInt(s.opacity, CONSTANTS.OPACITY_DEFAULT))
@@ -124,7 +156,6 @@ class SettingsManager {
         Math.max(CONSTANTS.AUTOHIDE_MIN, safeInt(s.autoHide, 0))
       ),
 
-      // Donations
       donationSound: s.donationSound !== false,
 
       donationDuration: Math.min(
@@ -147,7 +178,6 @@ class SettingsManager {
         )
       ),
 
-      // Goal
       goalTitle: String(s.goalTitle || '')
         .replace(/[<>]/g, '')
         .slice(0, 80),
@@ -155,13 +185,11 @@ class SettingsManager {
       goalTarget: Math.max(0, safeInt(s.goalTarget, 0)),
       goalCurrent: Math.max(0, safeInt(s.goalCurrent, 0)),
 
-      // Moderation
       chatFilter: String(s.chatFilter || '')
         .replace(/[<>]/g, '')
         .slice(0, 500)
         .toLowerCase(),
 
-      // API
       apiPort: Math.min(
         65535,
         Math.max(1024, safeInt(s.apiPort, CONSTANTS.DEFAULT_API_PORT))
@@ -171,25 +199,29 @@ class SettingsManager {
         .replace(/[^a-zA-Z0-9\-_]/g, '')
         .slice(0, 128),
 
-      apiEnabled: s.apiEnabled !== false, // Enabled by default
+      apiEnabled: s.apiEnabled !== false,
 
-      // Other
       animSpeed: Math.min(10, Math.max(1, safeInt(s.animSpeed, 5))),
       saveHistory: s.saveHistory === true,
 
-      // Notifications
-      notifyDonations: s.notifyDonations !== false, // Enabled by default
+      notifyDonations: s.notifyDonations !== false,
       notifyGoals: s.notifyGoals !== false,
       notifyMilestones: s.notifyMilestones !== false,
       minDonationAmount: Math.max(0, safeInt(s.minDonationAmount, 0)),
 
-      // Hotkeys
       hotkeys: {
         clickThrough: safeKey(hk.clickThrough),
         clearChat: safeKey(hk.clearChat),
         hideOverlay: safeKey(hk.hideOverlay),
         openSettings: safeKey(hk.openSettings),
       },
+
+      widgetTopDonors: s.widgetTopDonors === true,
+      widgetLastDonation: s.widgetLastDonation === true,
+      widgetSessionTotal: s.widgetSessionTotal === true,
+      widgetPosition: ['top-right', 'top-left', 'bottom-right', 'bottom-left'].includes(s.widgetPosition)
+        ? s.widgetPosition
+        : 'top-right',
     };
   }
 

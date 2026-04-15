@@ -13,18 +13,45 @@ class Logger {
     };
     
     this.currentLevel = this.logLevels.INFO;
-    this.logDir = path.join(app.getPath('userData'), 'logs');
+    this._logDir = null; // Will be initialized lazily
     this.maxFileSize = 10 * 1024 * 1024; // 10MB
     this.maxFiles = 5;
     
-    // Ensure log directory exists
-    this.ensureLogDirectory();
+    // Current log file (will be set when needed)
+    this._currentLogFile = null;
     
-    // Current log file
-    this.currentLogFile = this.getLogFilePath();
-    
-    // Log rotation check
-    this.checkLogRotation();
+    // Buffer for batching writes
+    this.logBuffer = [];
+    this.bufferSize = 100;
+    this.flushInterval = null;
+    this.flushDelay = 5000; // 5 seconds
+  }
+
+  /**
+   * Get log directory (lazy initialization)
+   */
+  getLogDir() {
+    if (!this._logDir) {
+      try {
+        this._logDir = path.join(app.getPath('userData'), 'logs');
+      } catch (err) {
+        // Fallback to current directory if electron app is not ready
+        this._logDir = path.join(process.cwd(), 'logs');
+        console.warn('Using fallback log directory:', this._logDir);
+      }
+    }
+    return this._logDir;
+  }
+
+  /**
+   * Get current log file (lazy initialization)
+   */
+  getCurrentLogFile() {
+    if (!this._currentLogFile) {
+      this._currentLogFile = this.getLogFilePath();
+      this.ensureLogDirectory();
+    }
+    return this._currentLogFile;
   }
 
   /**
@@ -32,8 +59,9 @@ class Logger {
    */
   ensureLogDirectory() {
     try {
-      if (!fs.existsSync(this.logDir)) {
-        fs.mkdirSync(this.logDir, { recursive: true });
+      const logDir = this.getLogDir();
+      if (!fs.existsSync(logDir)) {
+        fs.mkdirSync(logDir, { recursive: true });
       }
     } catch (err) {
       console.error('Failed to create log directory:', err.message);
@@ -45,7 +73,7 @@ class Logger {
    */
   getLogFilePath() {
     const date = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-    return path.join(this.logDir, `umbra-${date}.log`);
+    return path.join(this.getLogDir(), `umbra-${date}.log`);
   }
 
   /**
@@ -53,8 +81,9 @@ class Logger {
    */
   checkLogRotation() {
     try {
-      if (fs.existsSync(this.currentLogFile)) {
-        const stats = fs.statSync(this.currentLogFile);
+      const currentLogFile = this.getCurrentLogFile();
+      if (fs.existsSync(currentLogFile)) {
+        const stats = fs.statSync(currentLogFile);
         if (stats.size > this.maxFileSize) {
           this.rotateLogs();
         }
@@ -69,13 +98,14 @@ class Logger {
    */
   rotateLogs() {
     try {
+      const logDir = this.getLogDir();
       // Get all log files
-      const files = fs.readdirSync(this.logDir)
+      const files = fs.readdirSync(logDir)
         .filter(f => f.startsWith('umbra-') && f.endsWith('.log'))
         .map(f => ({
           name: f,
-          path: path.join(this.logDir, f),
-          time: fs.statSync(path.join(this.logDir, f)).mtime.getTime()
+          path: path.join(logDir, f),
+          time: fs.statSync(path.join(logDir, f)).mtime.getTime()
         }))
         .sort((a, b) => b.time - a.time); // Newest first
 
@@ -88,7 +118,7 @@ class Logger {
 
       // Create new log file with timestamp
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-      this.currentLogFile = path.join(this.logDir, `umbra-${timestamp}.log`);
+      this._currentLogFile = path.join(logDir, `umbra-${timestamp}.log`);
     } catch (err) {
       console.error('Log rotation failed:', err.message);
     }
@@ -131,15 +161,63 @@ class Logger {
   }
 
   /**
-   * Write log to file
+   * Start buffering logs
+   */
+  startBuffering() {
+    if (!this.flushInterval) {
+      this.flushInterval = setInterval(() => {
+        this.flush();
+      }, this.flushDelay);
+    }
+  }
+
+  /**
+   * Stop buffering logs and flush remaining
+   */
+  stopBuffering() {
+    if (this.flushInterval) {
+      clearInterval(this.flushInterval);
+      this.flushInterval = null;
+      this.flush();
+    }
+  }
+
+  /**
+   * Add message to buffer
+   */
+  addToBuffer(message) {
+    this.logBuffer.push(message);
+    
+    if (this.logBuffer.length >= this.bufferSize) {
+      this.flush();
+    }
+  }
+
+  /**
+   * Flush buffer to file
+   */
+  flush() {
+    if (this.logBuffer.length > 0) {
+      try {
+        const currentLogFile = this.getCurrentLogFile();
+        fs.appendFileSync(currentLogFile, this.logBuffer.join('\n') + '\n', 'utf8');
+        this.logBuffer = [];
+      } catch (err) {
+        // Fallback to console if file write fails
+        console.error('Failed to flush log buffer:', err.message);
+      }
+    }
+  }
+
+  /**
+   * Write log to file (with buffering)
    */
   writeToFile(message) {
-    try {
-      fs.appendFileSync(this.currentLogFile, message + '\n', 'utf8');
-    } catch (err) {
-      // Fallback to console if file write fails
-      console.error('Failed to write to log file:', err.message);
-    }
+    // Add to buffer
+    this.addToBuffer(message);
+    
+    // Also write to console immediately
+    console.log(message);
   }
 
   /**
@@ -268,8 +346,9 @@ class Logger {
    */
   getRecentLogs(limit = 100) {
     try {
-      if (fs.existsSync(this.currentLogFile)) {
-        const content = fs.readFileSync(this.currentLogFile, 'utf8');
+      const currentLogFile = this.getCurrentLogFile();
+      if (fs.existsSync(currentLogFile)) {
+        const content = fs.readFileSync(currentLogFile, 'utf8');
         const lines = content.split('\n').filter(line => line.trim());
         return lines.slice(-limit);
       }
@@ -285,13 +364,14 @@ class Logger {
    */
   getLogFiles() {
     try {
-      return fs.readdirSync(this.logDir)
+      const logDir = this.getLogDir();
+      return fs.readdirSync(logDir)
         .filter(f => f.startsWith('umbra-') && f.endsWith('.log'))
         .map(f => ({
           name: f,
-          path: path.join(this.logDir, f),
-          size: fs.statSync(path.join(this.logDir, f)).size,
-          modified: fs.statSync(path.join(this.logDir, f)).mtime
+          path: path.join(logDir, f),
+          size: fs.statSync(path.join(logDir, f)).size,
+          modified: fs.statSync(path.join(logDir, f)).mtime
         }))
         .sort((a, b) => b.modified - a.modified);
     } catch (err) {

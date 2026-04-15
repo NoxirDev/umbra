@@ -2,7 +2,7 @@
 (function() {
   'use strict';
 
-  const { escapeHtml, safeColor, createElement } = window.UmbraUtils;
+  const { escapeHtml, safeColor, createElement, isSafeUrl } = window.UmbraUtils;
 
   const MAX_MESSAGES = 100;
   let messages = [];
@@ -95,6 +95,7 @@
       emotes: data.emotes || [],
       bits: data.bits || 0,
       userId: data.userId,
+      msgId: data.msgId,
       time,
       count: 1,
       enhanced: true,
@@ -110,6 +111,8 @@
   /**
    * Schedule render using requestAnimationFrame for better performance
    */
+  let lastRenderedCount = 0;
+
   function scheduleRender() {
     if (renderScheduled) return;
     renderScheduled = true;
@@ -123,26 +126,33 @@
     const list = document.getElementById('msgs');
     if (!list) return;
 
-    // Use DocumentFragment for better performance
+    if (lastRenderedCount > messages.length || lastRenderedCount === 0) {
+      list.innerHTML = '';
+      lastRenderedCount = 0;
+    }
+
+    while (list.childNodes.length > messages.length) {
+      list.removeChild(list.firstChild);
+      lastRenderedCount--;
+    }
+
     const fragment = document.createDocumentFragment();
 
-    messages.forEach((m) => {
+    for (let i = lastRenderedCount; i < messages.length; i++) {
+      const m = messages[i];
       const msg = createElement('div', 'msg ' + m.platform);
 
       const top = createElement('div', 'msg-top');
 
-      // Platform badge
       const badgeClass = BADGE_MAP[m.platform] || 'b-api';
       const badgeLabel = LABEL_MAP[m.platform] || m.platform.toUpperCase();
       top.appendChild(createElement('span', 'badge ' + badgeClass, badgeLabel));
 
-      // Twitch badges (if enhanced message)
       if (m.enhanced && m.badges && m.badges.length > 0) {
         m.badges.forEach((badge) => {
           const badgeInfo = window.TwitchEnhanced?.getBadgeInfo(badge.name, badge.version);
           if (badgeInfo) {
             if (badgeInfo.url) {
-              // Use real Twitch badge image
               const badgeImg = document.createElement('img');
               badgeImg.className = 'twitch-badge-img';
               badgeImg.src = badgeInfo.url2x || badgeInfo.url;
@@ -151,7 +161,6 @@
               badgeImg.loading = 'lazy';
               top.appendChild(badgeImg);
             } else {
-              // Fallback to emoji
               const badgeEl = createElement('span', 'twitch-badge', badgeInfo.icon || '');
               badgeEl.title = badgeInfo.name;
               top.appendChild(badgeEl);
@@ -160,7 +169,6 @@
         });
       }
 
-      // Author name
       const auth = createElement('span', 'msg-author', m.author);
       if (/^#[0-9a-fA-F]{6}$/.test(m.color)) {
         auth.style.color = safeColor(m.color);
@@ -174,7 +182,6 @@
 
       msg.appendChild(top);
 
-      // Message text with emotes
       const textEl = createElement('div', 'msg-text');
       if (m.enhanced && m.emotes && m.emotes.length > 0) {
         textEl.innerHTML = renderMessageWithEmotes(m.text, m.emotes);
@@ -182,7 +189,6 @@
         textEl.textContent = m.count > 1 ? m.text + ' (x' + m.count + ')' : m.text;
       }
 
-      // Add bits indicator if present
       if (m.bits && m.bits > 0) {
         const bitsEl = createElement('span', 'msg-bits', `${m.bits} bits`);
         textEl.appendChild(bitsEl);
@@ -190,11 +196,10 @@
 
       msg.appendChild(textEl);
       fragment.appendChild(msg);
-    });
+    }
 
-    // Clear and append in one operation
-    list.innerHTML = '';
     list.appendChild(fragment);
+    lastRenderedCount = messages.length;
     list.scrollTop = list.scrollHeight;
   }
 
@@ -202,24 +207,24 @@
    * Render message text with emotes
    */
   function renderMessageWithEmotes(text, emotePositions) {
-    // Sort emotes by position
     const sorted = emotePositions.sort((a, b) => a.start - b.start);
 
     let result = '';
     let lastIndex = 0;
 
     sorted.forEach((emote) => {
-      // Add text before emote
       result += escapeHtml(text.slice(lastIndex, emote.start));
 
-      // Add Twitch emote
-      const emoteUrl = `https://static-cdn.jtvnw.net/emoticons/v2/${emote.id}/default/dark/2.0`;
-      result += `<img class="emote" src="${emoteUrl}" alt="${text.slice(emote.start, emote.end + 1)}" loading="lazy">`;
+      const emoteUrl = `https://static-cdn.jtvnw.net/emoticons/v2/${encodeURIComponent(emote.id)}/default/dark/2.0`;
+      if (isSafeUrl(emoteUrl)) {
+        result += `<img class="emote" src="${emoteUrl}" alt="${escapeHtml(text.slice(emote.start, emote.end + 1))}" loading="lazy">`;
+      } else {
+        result += escapeHtml(text.slice(emote.start, emote.end + 1));
+      }
 
       lastIndex = emote.end + 1;
     });
 
-    // Add remaining text and check for third-party emotes
     const remainingText = text.slice(lastIndex);
     result += renderThirdPartyEmotes(remainingText);
 
@@ -235,8 +240,8 @@
     const words = text.split(' ');
     const result = words.map((word) => {
       const emote = window.TwitchEnhanced.getEmote(word);
-      if (emote) {
-        return `<img class="emote" src="${emote.url}" alt="${emote.code}" title="${emote.code} (${emote.provider})" loading="lazy">`;
+      if (emote && isSafeUrl(emote.url)) {
+        return `<img class="emote" src="${emote.url}" alt="${escapeHtml(emote.code)}" title="${escapeHtml(emote.code)} (${escapeHtml(emote.provider)})" loading="lazy">`;
       }
       return escapeHtml(word);
     });
@@ -246,7 +251,24 @@
 
   function clearMessages() {
     messages = [];
+    lastRenderedCount = 0;
     render();
+  }
+
+  function deleteMessage(msgId) {
+    const idx = messages.findIndex(m => m.msgId === msgId);
+    if (idx !== -1) {
+      messages.splice(idx, 1);
+      lastRenderedCount = Math.max(0, lastRenderedCount - 1);
+      scheduleRender();
+    }
+  }
+
+  function deleteMessagesByUser(userId) {
+    const before = messages.length;
+    messages = messages.filter(m => m.userId !== userId);
+    lastRenderedCount = Math.max(0, lastRenderedCount - (before - messages.length));
+    scheduleRender();
   }
 
   function setBlockedWords(words) {
@@ -258,6 +280,8 @@
     addMessage,
     addEnhancedMessage,
     clearMessages,
+    deleteMessage,
+    deleteMessagesByUser,
     setBlockedWords,
     render,
   };

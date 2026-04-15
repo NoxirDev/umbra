@@ -9,9 +9,7 @@ function escapeHtml(str) {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#x27;')
-    .replace(/`/g, '&#x60;')
-    .replace(/\//g, '&#x2F;');
+    .replace(/'/g, '&#x27;');
 }
 
 /**
@@ -90,6 +88,23 @@ function debounce(func, wait) {
   };
 }
 
+function isSafeUrl(url) {
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== 'https:') return false;
+    const allowed = [
+      'static-cdn.jtvnw.net',
+      'cdn.betterttv.net',
+      'cdn.frankerfacez.com',
+      '7tv.io',
+      'badges.twitch.tv',
+    ];
+    return allowed.some(d => parsed.hostname === d || parsed.hostname.endsWith('.' + d));
+  } catch {
+    return false;
+  }
+}
+
 // Export for both Node.js and browser
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
@@ -102,6 +117,7 @@ if (typeof module !== 'undefined' && module.exports) {
     createElement,
     clamp,
     debounce,
+    isSafeUrl,
   };
 } else {
   window.UmbraUtils = {
@@ -114,5 +130,6 @@ if (typeof module !== 'undefined' && module.exports) {
     createElement,
     clamp,
     debounce,
+    isSafeUrl,
   };
 }
