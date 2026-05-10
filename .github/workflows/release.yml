@@ -5,49 +5,97 @@ on:
     tags:
       - 'v*'
 
+permissions:
+  contents: write
+
 jobs:
-  release:
-    name: Create Release
+  build:
+    name: Build and Release
     runs-on: windows-latest
 
     steps:
-    - uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    - name: Setup Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: '18'
-        cache: 'npm'
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
 
-    - name: Install dependencies
-      run: npm ci
+      - name: Install dependencies
+        run: npm ci
 
-    - name: Build application
-      run: npm run build:win
-      continue-on-error: true
+      - name: Generate icons
+        run: npm run icons:generate
 
-    - name: Create Release
-      uses: softprops/action-gh-release@v1
-      with:
-        files: |
-          dist/**/*
-        body: |
-          ## UMBRA ${{ github.ref_name }}
+      - name: Build and publish
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run build:nsis -- --publish always
 
-          ### Установка
-          1. Скачайте архив для вашей ОС
-          2. Распакуйте
-          3. Запустите UMBRA.exe
+      - name: Upload NSIS installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: UMBRA-Setup
+          path: dist/UMBRA-Setup-*.exe
+          if-no-files-found: error
 
-          ### Документация
-          - [README](https://github.com/NoxirDev/umbra/blob/main/README.md)
-          - [API Docs](https://github.com/NoxirDev/umbra/blob/main/API.md)
-          - [Changelog](https://github.com/NoxirDev/umbra/blob/main/docs/CHANGELOG.md)
+      - name: Upload portable version
+        uses: actions/upload-artifact@v4
+        with:
+          name: UMBRA-Portable
+          path: dist/UMBRA-*-Portable.exe
+          if-no-files-found: ignore
 
-          ### Поддержка
-          - [Issues](https://github.com/NoxirDev/umbra/issues)
-          - [Discussions](https://github.com/NoxirDev/umbra/discussions)
-        draft: false
-        prerelease: false
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload latest.yml (for auto-updater)
+        uses: actions/upload-artifact@v4
+        with:
+          name: update-metadata
+          path: |
+            dist/latest.yml
+            dist/*.blockmap
+          if-no-files-found: ignore
+
+  notify:
+    name: Create Release Notes
+    needs: build
+    runs-on: ubuntu-latest
+    if: success()
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Update release description
+        uses: softprops/action-gh-release@v2
+        with:
+          body: |
+            ## UMBRA ${{ github.ref_name }}
+            
+            ### Что нового / What's New
+            - Автоматические обновления / Automatic updates
+            - Улучшенный установщик / Improved installer
+            
+            ### Установка / Installation
+            
+            **Установщик (рекомендуется) / Installer (recommended):**
+            1. Скачайте `UMBRA-Setup-*.exe`
+            2. Запустите установщик
+            3. Следуйте инструкциям
+            
+            **Портативная версия / Portable:**
+            1. Скачайте `UMBRA-*-Portable.exe`
+            2. Запустите — установка не требуется
+            
+            ### Автообновления / Auto-updates
+            Установленная версия будет автоматически проверять наличие обновлений.
+            The installed version will automatically check for updates.
+            
+            ### Поддержка / Support
+            - [Issues](https://github.com/${{ github.repository }}/issues)
+            - [Discussions](https://github.com/${{ github.repository }}/discussions)
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

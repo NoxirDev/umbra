@@ -13,17 +13,22 @@
     "build:inno": "electron-builder --win inno",
     "build:appx": "electron-builder --win appx",
     "build:all": "electron-builder --win nsis portable inno appx",
+    "icons:generate": "node scripts/generate-icons.js",
+    "postinstall": "electron-builder install-app-deps",
     "test": "jest"
   },
   "author": "Noxir",
   "license": "MIT",
   "dependencies": {
+    "electron-updater": "^6.3.9",
     "ws": "^8.18.0"
   },
   "devDependencies": {
     "electron": "^41.2.0",
     "electron-builder": "^26.8.1",
-    "jest": "^30.3.0"
+    "jest": "^30.3.0",
+    "png-to-ico": "^2.1.8",
+    "sharp": "^0.33.5"
   },
   "build": {
     "appId": "com.noxir.umbra",
@@ -76,6 +81,9 @@
       "installerIcon": "assets/icon.ico",
       "uninstallerIcon": "assets/icon.ico",
       "installerHeaderIcon": "assets/icon.ico",
+      "installerSidebar": "assets/sidebar.bmp",
+      "installerHeader": "assets/header.bmp",
+      "uninstallerSidebar": "assets/sidebar.bmp",
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "UMBRA",
@@ -91,7 +99,10 @@
       "language": "1049",
       "menuCategory": true,
       "multiLanguageInstaller": true,
-      "displayLanguageSelector": true
+      "displayLanguageSelector": true,
+      "warningsAsErrors": false,
+      "differentialPackage": true,
+      "include": "build/installer.nsh"
     },
     "portable": {
       "artifactName": "${productName}-${version}-Portable.${ext}",
